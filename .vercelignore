@@ -1,0 +1,36 @@
+# Directorios que no deben subirse al proyecto backend de Vercel
+conteos-frontend/
+conteos-frontend-temp/
+.venv/
+node_modules/
+__pycache__/
+*.pyc
+*.pyo
+
+# Archivos de entorno locales
+.env
+.env.docker
+
+# Archivos de desarrollo y scripts locales
+Font/
+scripts/
+*.sql
+*.log
+fullstack.*.log
+run_dev.py
+run_fullstack.py
+seed_dev.py
+setup_dev.ps1
+test_db_connection.py
+test_queries.py
+show_conteo_table.py
+copiar_permisos.py
+deploy.sh
+docker-compose.yml
+Dockerfile
+startup.txt
+railway.toml
+Procfile
+# package.json raíz (solo Tailwind local, no necesario en el backend)
+/package.json
+/package-lock.json

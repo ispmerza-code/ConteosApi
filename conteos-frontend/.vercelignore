@@ -1,0 +1,3 @@
+# Archivos a excluir del deploy del frontend
+node_modules/
+.next/
