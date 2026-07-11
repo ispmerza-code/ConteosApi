@@ -55,9 +55,9 @@ def check_env_vars() -> list[str]:
 
 def check_db_connection() -> tuple[bool, str]:
     from sqlalchemy import text
-    from app.core.database import engine
+    from app.core.database import get_engine
 
-    with engine.connect() as conn:
+    with get_engine().connect() as conn:
         result = conn.execute(text("SELECT 1")).scalar()
     return True, f"SELECT 1 = {result}"
 

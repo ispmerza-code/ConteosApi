@@ -4,45 +4,58 @@ from sqlalchemy.orm import sessionmaker
 from app.core.config import settings
 import os
 
-# Configuración de argumentos extra para la conexión
-connect_args = {}
+_engine = None
+_SessionLocal = None
 
-# Si la base es MySQL (mysql+pymysql://...), activamos SSL y timeout
-if settings.DATABASE_URL.startswith("mysql"):
-    connect_args["connect_timeout"] = 10
-    # Aiven expone TLS con una cadena de certificados que falla en Railway si se valida
-    # contra el bundle del contenedor. Permitimos TLS sin verificación estricta para
-    # que el despliegue funcione en Railway; si quieres endurecerlo, usa un CA bundle
-    # específico de tu proveedor y cambia esta variable de entorno.
-    verify_db_ssl = settings.DB_SSL_VERIFY.lower() in ("1", "true", "yes")
-    if verify_db_ssl:
-        azure_ca_bundle = "/etc/ssl/certs/ca-certificates.crt"
-        if os.path.exists(azure_ca_bundle):
-            connect_args["ssl"] = {
-                "ca": azure_ca_bundle
-            }
-    else:
-        connect_args["ssl"] = {"fake_flag_to_enable_tls": True}
 
-# Crear el motor de la base de datos
-engine = create_engine(
-    settings.DATABASE_URL,
-    pool_pre_ping=True,
-    pool_recycle=300,
-    echo=False,           # Cambiar a True para ver las consultas SQL en desarrollo
-    connect_args=connect_args
-)
+def _build_connect_args() -> dict:
+    connect_args: dict = {}
+    if settings.DATABASE_URL.startswith("mysql"):
+        connect_args["connect_timeout"] = 10
+        verify_db_ssl = settings.DB_SSL_VERIFY.lower() in ("1", "true", "yes")
+        if verify_db_ssl:
+            azure_ca_bundle = "/etc/ssl/certs/ca-certificates.crt"
+            if os.path.exists(azure_ca_bundle):
+                connect_args["ssl"] = {"ca": azure_ca_bundle}
+        else:
+            connect_args["ssl"] = {"fake_flag_to_enable_tls": True}
+    return connect_args
 
-# Crear el SessionLocal para las sesiones de base de datos
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# Base para los modelos
+def get_engine():
+    global _engine
+    if _engine is None:
+        _engine = create_engine(
+            settings.DATABASE_URL,
+            pool_pre_ping=True,
+            pool_recycle=300,
+            echo=False,
+            connect_args=_build_connect_args(),
+        )
+    return _engine
+
+
+def get_session_factory():
+    global _SessionLocal
+    if _SessionLocal is None:
+        _SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=get_engine())
+    return _SessionLocal
+
+
 Base = declarative_base()
 
-# Dependencia para obtener la sesión de base de datos
+
 def get_db():
-    db = SessionLocal()
+    db = get_session_factory()()
     try:
         yield db
     finally:
         db.close()
+
+
+def __getattr__(name: str):
+    if name == "engine":
+        return get_engine()
+    if name == "SessionLocal":
+        return get_session_factory()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

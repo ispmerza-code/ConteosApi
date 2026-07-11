@@ -32,6 +32,10 @@ Repositorio: https://github.com/ispmerza-code/ConteosApi
 
 Marca **Production**, **Preview** y **Development**.
 
+> **Importante:** Si Aiven te da `mysql://...?ssl-mode=REQUIRED`, en Vercel usa
+> `mysql+pymysql://...` (con `+pymysql` y BD `siniestros_scisp`). El codigo
+> normaliza `mysql://` automaticamente, pero conviene pegarlo bien desde el inicio.
+
 ---
 
 ## Verificar despues del deploy

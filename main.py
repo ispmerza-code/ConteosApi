@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.routers import conteos, auth, catalogo
 from app.core.config import settings
-from app.core.database import engine
+from app.core.database import get_engine
 from app.models import models
 
 logging.basicConfig(level=settings.LOG_LEVEL.upper())
@@ -16,14 +16,14 @@ logging.basicConfig(level=settings.LOG_LEVEL.upper())
 if not os.getenv("VERCEL"):
     # Crear las tablas si no existen (no bloquear el arranque si la DB no está disponible)
     try:
-        models.Base.metadata.create_all(bind=engine)
+        models.Base.metadata.create_all(bind=get_engine())
     except Exception as e:
         print(f"[WARNING] No se pudieron crear las tablas: {e}")
 
     # Migración: agregar columna FechaHora si no existe
     try:
         from sqlalchemy import text
-        with engine.connect() as _conn:
+        with get_engine().connect() as _conn:
             _res = _conn.execute(text(
                 "SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS "
                 "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'conteo' AND COLUMN_NAME = 'FechaHora'"
@@ -69,9 +69,9 @@ async def health():
 
 @app.get("/health/db")
 async def health_db():
-    from app.core.database import SessionLocal
+    from app.core.database import get_session_factory
     try:
-        db = SessionLocal()
+        db = get_session_factory()()
         db.execute(__import__('sqlalchemy').text("SELECT 1"))
         db.close()
         return {"status": "ok", "db": "connected"}
