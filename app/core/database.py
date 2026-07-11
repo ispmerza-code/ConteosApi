@@ -9,7 +9,7 @@ _SessionLocal = None
 
 
 def _build_connect_args() -> dict:
-    connect_args: dict = {}
+    connect_args: dict = {"charset": "utf8mb4"}
     if settings.DATABASE_URL.startswith("mysql"):
         connect_args["connect_timeout"] = 10
         verify_db_ssl = settings.DB_SSL_VERIFY.lower() in ("1", "true", "yes")

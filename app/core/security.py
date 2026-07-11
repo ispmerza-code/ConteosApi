@@ -1,17 +1,14 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.database import get_db
-from app.models.models import Usuarios, NivelUsuarios, UsuarioSucursal
+from app.models.models import Usuarios, UsuarioSucursal
 from app.schemas.schemas import TokenData
 
-# Configuración de encriptación
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 security = HTTPBearer()
 
 # ---------------------------------------------------------------------------
@@ -36,19 +33,12 @@ NIVELES_ELIMINAR   = {1, 8}       # Admin, Supervisión CCTV
 NIVELES_EDITAR     = {1, 2, 3, 7, 8}  # Todos excepto APP
 
 
-def verify_password(plain_password, hashed_password):
-    return pwd_context.verify(plain_password, hashed_password)
-
-
-def get_password_hash(password):
-    return pwd_context.hash(password)
-
-
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()
-    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=15))
+    expire = datetime.now(timezone.utc) + (expires_delta or timedelta(minutes=15))
     to_encode.update({"exp": expire})
-    return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+    token = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+    return token if isinstance(token, str) else token.decode("utf-8")
 
 
 def authenticate_user(db: Session, user_id: int, password: str):
@@ -81,9 +71,10 @@ def get_current_user(
         payload = jwt.decode(
             credentials.credentials, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
         )
-        user_id: int = payload.get("sub")
-        if user_id is None:
+        raw_sub = payload.get("sub")
+        if raw_sub is None:
             raise credentials_exception
+        user_id = int(raw_sub)
         token_data = TokenData(user_id=user_id)
     except JWTError:
         raise credentials_exception

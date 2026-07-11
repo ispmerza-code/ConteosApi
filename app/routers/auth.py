@@ -17,32 +17,41 @@ async def login(
     db: Session = Depends(get_db)
 ):
     """Iniciar sesión y obtener token de acceso"""
-    
-    user = authenticate_user(db, usuario_data.IdUsuarios, usuario_data.Contraseña)
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="ID de usuario o contraseña incorrectos",
-            headers={"WWW-Authenticate": "Bearer"},
+    try:
+        user = authenticate_user(db, usuario_data.IdUsuarios, usuario_data.Contraseña)
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="ID de usuario o contraseña incorrectos",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token = create_access_token(
+            data={"sub": str(user.IdUsuarios)}, expires_delta=access_token_expires
         )
-    
-    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data={"sub": str(user.IdUsuarios)}, expires_delta=access_token_expires
-    )
-    
-    user_info = UsuarioResponse(
-        IdUsuarios=user.IdUsuarios,
-        NombreUsuario=user.NombreUsuario,
-        NivelUsuario=user.NivelUsuario,
-        Estatus=user.Estatus
-    )
-    
-    return {
-        "access_token": access_token,
-        "token_type": "bearer",
-        "user_info": user_info
-    }
+
+        user_info = UsuarioResponse(
+            IdUsuarios=user.IdUsuarios,
+            NombreUsuario=user.NombreUsuario or "",
+            NivelUsuario=user.NivelUsuario,
+            Estatus=user.Estatus,
+        )
+
+        return {
+            "access_token": access_token,
+            "token_type": "bearer",
+            "user_info": user_info,
+        }
+    except HTTPException:
+        raise
+    except Exception as exc:
+        import logging
+        logging.exception("Login failed for user %s", usuario_data.IdUsuarios)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error interno en login: {exc}",
+        ) from exc
 
 @router.get("/me", response_model=UsuarioResponse)
 async def read_users_me(
