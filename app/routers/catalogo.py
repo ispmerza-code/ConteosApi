@@ -25,6 +25,14 @@ async def listar_productos(
     """
     return CatalogoService.listar_productos(db)
 
+@router.get("/categorias/map")
+async def mapa_categorias(
+    db: Session = Depends(get_db),
+    current_user: Usuarios = Depends(get_current_user)
+):
+    """Mapa código de barras → categoría (ligero, para estadísticas)."""
+    return CatalogoService.mapa_categorias(db)
+
 @router.get("/{codigo_barras}", response_model=ProductoResponse)
 async def obtener_producto(
     codigo_barras: str,

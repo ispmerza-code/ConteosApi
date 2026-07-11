@@ -5,14 +5,14 @@ import { useRouter } from 'next/navigation'
 import { FiClipboard, FiArrowLeft, FiSave, FiUser, FiCalendar, FiPackage } from 'react-icons/fi'
 import { useAuth } from '@/context/AuthContext'
 import { conteosAPI } from '@/lib/api'
-import { ConteoResponse, ConteoDetalle } from '@/types/api'
+import { ConteoResponse, ConteoListResponse, ConteoDetalle } from '@/types/api'
 import { formatShortDate } from '@/lib/dateUtils'
 
 export default function ContestarConteos() {
   const { user } = useAuth()
   const router = useRouter()
   
-  const [conteosAsignados, setConteosAsignados] = useState<ConteoResponse[]>([])
+  const [conteosAsignados, setConteosAsignados] = useState<ConteoListResponse[]>([])
   const [selectedConteo, setSelectedConteo] = useState<ConteoResponse | null>(null)
   const [sucursalesMap, setSucursalesMap] = useState<Record<string, string>>({})
   const [respuestas, setRespuestas] = useState<{ [key: string]: number }>({})
@@ -32,7 +32,7 @@ export default function ContestarConteos() {
     try {
       setLoadingData(true)
       const [conteos, sucursales] = await Promise.all([
-        conteosAPI.getConteos(),
+        conteosAPI.getConteos(undefined, 500),
         conteosAPI.getSucursales()
       ])
 
@@ -47,7 +47,7 @@ export default function ContestarConteos() {
       // Para nivel 4: getSucursales() ya devuelve solo sus sucursales asignadas
       // Para otros niveles: devuelve todas
       const sucursalesIds = Object.keys(sucursalesLookup)
-      const asignados = conteos.filter((conteo: ConteoResponse) =>
+      const asignados = conteos.filter((conteo: ConteoListResponse) =>
         conteo.Envio === 0 && sucursalesIds.includes(conteo.IdCentro)
       )
       
@@ -65,7 +65,7 @@ export default function ContestarConteos() {
     return nombreSucursal ? `${idCentro} - ${nombreSucursal}` : idCentro
   }
 
-  const selectConteo = (conteo: ConteoResponse) => {
+  const selectConteo = (conteo: ConteoListResponse) => {
     // Cargar detalles completos del conteo desde el backend
     setLoading(true)
     conteosAPI.getConteo(conteo.idConteo)

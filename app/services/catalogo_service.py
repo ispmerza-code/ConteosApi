@@ -35,6 +35,16 @@ class CatalogoService:
             }
             for p in productos
         ]
+
+    @staticmethod
+    def mapa_categorias(db: Session) -> dict[str, str]:
+        """Devuelve {CodigoBarras: Categoria} sin cargar todo el catálogo."""
+        rows = (
+            db.query(Catalogo.CodigoBarras, CatCategoria.Categoria)
+            .join(CatCategoria, Catalogo.IdCategoria == CatCategoria.IdCategoria)
+            .all()
+        )
+        return {codigo: categoria for codigo, categoria in rows}
     
     @staticmethod
     def crear_producto(db: Session, producto_data: ProductoCreate) -> Catalogo:

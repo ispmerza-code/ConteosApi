@@ -118,6 +118,13 @@ class ConteoListResponse(BaseModel):
     class Config:
         from_attributes = True
 
+class ConteoResumenDashboard(BaseModel):
+    totalConteos: int
+    conteosPendientes: int
+    conteosNoValidados: int
+    conteosValidados: int
+    recientes: List[ConteoListResponse]
+
 # Schemas para usuarios y autenticación
 class UsuarioBase(BaseModel):
     IdUsuarios: int

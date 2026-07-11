@@ -20,6 +20,7 @@ export default function Dashboard() {
     cambioCompletados: 0
   })
   const [allConteos, setAllConteos] = useState<ConteoListResponse[]>([])
+  const [fullConteos, setFullConteos] = useState<ConteoListResponse[]>([])
   const [filtroEstatus, setFiltroEstatus] = useState<number | null>(null)
   const [sucursalesMap, setSucursalesMap] = useState<Record<string, string>>({})
   const [usuariosInfoMap, setUsuariosInfoMap] = useState<Record<number, {nombre: string, nivel: number}>>({})
@@ -32,12 +33,17 @@ export default function Dashboard() {
     }
   }, [user])
 
+  useEffect(() => {
+    if (filtroEstatus === null || fullConteos.length > 0 || !user) return
+    const idCentroFiltro = user?.NivelUsuario === 4 ? selectedSucursal?.IdCentro : undefined
+    conteosAPI.getConteos(idCentroFiltro).then(setFullConteos).catch(console.error)
+  }, [filtroEstatus, fullConteos.length, user, selectedSucursal])
+
   const loadDashboardData = async () => {
     try {
-      // Para NivelUsuario=4 (APP), filtrar por la sucursal seleccionada al login
       const idCentroFiltro = user?.NivelUsuario === 4 ? selectedSucursal?.IdCentro : undefined
-      const [conteos, sucursales, usuarios] = await Promise.all([
-        conteosAPI.getConteos(idCentroFiltro),
+      const [resumen, sucursales, usuarios] = await Promise.all([
+        conteosAPI.getConteosResumen(idCentroFiltro),
         conteosAPI.getSucursales(),
         conteosAPI.getUsuarios()
       ])
@@ -55,25 +61,18 @@ export default function Dashboard() {
       }, {})
 
       setUsuariosInfoMap(usuariosLookup)
-      
-      // Ordenar conteos por ID descendente (más recientes primero)
-      const conteosOrdenados = [...conteos].sort((a: any, b: any) => b.idConteo - a.idConteo)
-      
-      // Calcular estadísticas
-      const totalConteos = conteos.length
-      const conteosPendientes = conteos.filter((c: any) => c.Envio === 0).length
-      const conteosNoValidados = conteos.filter((c: any) => c.Estatus === 0).length
-      const conteosValidados = conteos.filter((c: any) => c.Estatus === 1).length
-      
+
       setStats({
-        totalConteos,
-        conteosPendientes,
-        conteosNoValidados,
-        conteosValidados,
+        totalConteos: resumen.totalConteos,
+        conteosPendientes: resumen.conteosPendientes,
+        conteosNoValidados: resumen.conteosNoValidados,
+        conteosValidados: resumen.conteosValidados,
         cambioCompletados: 0
       })
       setLastUpdate(new Date())
-      setAllConteos(conteosOrdenados)
+      setAllConteos(resumen.recientes)
+      setFullConteos([])
+      setFiltroEstatus(null)
     } catch (error) {
       console.error('Error loading dashboard data:', error)
     } finally {
@@ -146,8 +145,8 @@ export default function Dashboard() {
   )
 
   const conteosParaMostrar = filtroEstatus !== null
-    ? allConteos.filter((c: ConteoListResponse) => c.Estatus === filtroEstatus)
-    : allConteos.slice(0, 5)
+    ? fullConteos.filter((c: ConteoListResponse) => c.Estatus === filtroEstatus)
+    : allConteos
 
   if (loading) {
     return (

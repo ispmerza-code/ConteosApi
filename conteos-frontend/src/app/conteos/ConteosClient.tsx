@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { FiFilter, FiSearch, FiCalendar, FiUser, FiPackage, FiEdit, FiEye, FiTrash } from 'react-icons/fi'
 import { conteosAPI } from '@/lib/api'
-import { ConteoResponse, User } from '@/types/api'
+import { ConteoListResponse, User } from '@/types/api'
 import { formatShortDate } from '@/lib/dateUtils'
 import { useAuth } from '@/context/AuthContext'
 
@@ -12,10 +12,10 @@ export function ConteosClient() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user, selectedSucursal } = useAuth()
-  const [conteos, setConteos] = useState<ConteoResponse[]>([])
+  const [conteos, setConteos] = useState<ConteoListResponse[]>([])
   const [sucursalesMap, setSucursalesMap] = useState<Record<string, string>>({})
   const [usuariosMap, setUsuariosMap] = useState<Record<number, string>>({})
-  const [filteredConteos, setFilteredConteos] = useState<ConteoResponse[]>([])
+  const [filteredConteos, setFilteredConteos] = useState<ConteoListResponse[]>([])
   const [loading, setLoading] = useState(true)
   
   // Paginación
@@ -71,21 +71,9 @@ export function ConteosClient() {
       }, {})
 
       setUsuariosMap(usuariosLookup)
-      
-      // Obtener detalles completos de cada conteo
-      const conteosConDetalles = await Promise.all(
-        data.map(async (c: any) => {
-          try {
-            const completo = await conteosAPI.getConteo(c.idConteo)
-            return completo
-          } catch {
-            return c
-          }
-        })
-      )
-      
-      setConteos(conteosConDetalles)
-      setFilteredConteos(conteosConDetalles)
+
+      setConteos(data)
+      setFilteredConteos(data)
     } catch (error) {
       console.error('Error loading conteos:', error)
     } finally {
@@ -413,7 +401,7 @@ export function ConteosClient() {
                     <FiCalendar className="w-4 h-4 mr-2 text-gray-400" />
                     <span>{formatShortDate(conteo.Fechal)}</span>
                   </div>
-                  <p className="text-gray-600">Productos: {conteo.detalles?.length || 0}</p>
+                  <p className="text-gray-600">Productos: {conteo.total_productos ?? 0}</p>
                 </div>
 
                 <div className="mt-4 flex gap-2">
@@ -499,7 +487,7 @@ export function ConteosClient() {
                       {getStatusBadge(conteo.Envio, conteo.Estatus)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {conteo.detalles?.length || 0}
+                      {conteo.total_productos ?? 0}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex space-x-2">

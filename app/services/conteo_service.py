@@ -1,12 +1,12 @@
 from datetime import date, datetime
 from typing import List, Optional
-from sqlalchemy.orm import Session
-from sqlalchemy import and_
+from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import and_, func
 from fastapi import HTTPException, status
 from app.models.models import Conteo, ConteoDetalles, Usuarios, Sucursales, Catalogo
 from app.schemas.schemas import (
     ConteoCreate, ConteoAsignar, ConteoEdit, ConteoContestar, ConteoValidar,
-    ConteoResponse, ConteoListResponse, ConteoDetalleCreate
+    ConteoResponse, ConteoListResponse, ConteoResumenDashboard, ConteoDetalleCreate
 )
 
 class ConteoService:
@@ -450,6 +450,74 @@ class ConteoService:
         return ConteoService._build_conteo_response(db, conteo)
     
     @staticmethod
+    def _apply_list_filters(
+        query,
+        id_centro: Optional[str] = None,
+        envio: Optional[int] = None,
+        id_usuario: Optional[int] = None,
+        allowed_centros: Optional[List[str]] = None,
+    ):
+        if allowed_centros is not None:
+            query = query.filter(Conteo.IdCentro.in_(allowed_centros))
+        if id_centro:
+            query = query.filter(Conteo.IdCentro == id_centro)
+        if envio is not None:
+            query = query.filter(Conteo.Envio == envio)
+        if id_usuario:
+            query = query.filter(Conteo.IdUsuario == id_usuario)
+        return query
+
+    @staticmethod
+    def obtener_resumen_dashboard(
+        db: Session,
+        id_centro: Optional[str] = None,
+        allowed_centros: Optional[List[str]] = None,
+    ) -> ConteoResumenDashboard:
+        """Conteos agregados para el dashboard en pocas consultas SQL."""
+        base = db.query(Conteo)
+        base = ConteoService._apply_list_filters(
+            base, id_centro=id_centro, allowed_centros=allowed_centros
+        )
+
+        total = base.count()
+        pendientes = base.filter(Conteo.Envio == 0).count()
+        no_validados = base.filter(Conteo.Estatus == 0).count()
+        validados = base.filter(Conteo.Estatus == 1).count()
+
+        recientes = ConteoService.listar_conteos(
+            db=db,
+            skip=0,
+            limit=5,
+            id_centro=id_centro,
+            allowed_centros=allowed_centros,
+        )
+
+        return ConteoResumenDashboard(
+            totalConteos=total,
+            conteosPendientes=pendientes,
+            conteosNoValidados=no_validados,
+            conteosValidados=validados,
+            recientes=recientes,
+        )
+
+    @staticmethod
+    def listar_conteos_con_detalles(
+        db: Session,
+        id_centro: Optional[str] = None,
+        allowed_centros: Optional[List[str]] = None,
+    ) -> List[ConteoResponse]:
+        """Lista conteos con detalles en una sola consulta (estadísticas)."""
+        query = db.query(Conteo).options(
+            joinedload(Conteo.detalles).joinedload(ConteoDetalles.producto)
+        )
+        query = ConteoService._apply_list_filters(
+            query, id_centro=id_centro, allowed_centros=allowed_centros
+        )
+        query = query.order_by(Conteo.Fechal.desc(), Conteo.idConteo.desc())
+        conteos = query.all()
+        return [ConteoService._build_conteo_response_from_loaded(conteo) for conteo in conteos]
+    
+    @staticmethod
     def listar_conteos(
         db: Session,
         skip: int = 0,
@@ -462,33 +530,33 @@ class ConteoService:
         """Listar conteos con filtros opcionales.
         allowed_centros: si no es None, restringe a esas sucursales (usuarios nivel 2 y 4).
         """
-        query = db.query(Conteo)
+        counts_subq = (
+            db.query(
+                ConteoDetalles.IdConteo.label("conteo_id"),
+                func.count(ConteoDetalles.idConteoDetalles).label("total_productos"),
+            )
+            .group_by(ConteoDetalles.IdConteo)
+            .subquery()
+        )
 
-        # Restricción de sucursales para niveles con acceso limitado
-        if allowed_centros is not None:
-            query = query.filter(Conteo.IdCentro.in_(allowed_centros))
+        query = db.query(
+            Conteo,
+            func.coalesce(counts_subq.c.total_productos, 0).label("total_productos"),
+        ).outerjoin(counts_subq, Conteo.idConteo == counts_subq.c.conteo_id)
 
-        if id_centro:
-            query = query.filter(Conteo.IdCentro == id_centro)
-
-        if envio is not None:
-            query = query.filter(Conteo.Envio == envio)
-
-        if id_usuario:
-            query = query.filter(Conteo.IdUsuario == id_usuario)
+        query = ConteoService._apply_list_filters(
+            query,
+            id_centro=id_centro,
+            envio=envio,
+            id_usuario=id_usuario,
+            allowed_centros=allowed_centros,
+        )
 
         query = query.order_by(Conteo.Fechal.desc(), Conteo.idConteo.desc())
-        
-        conteos = query.offset(skip).limit(limit).all()
-        
-        result = []
-        for conteo in conteos:
-            # Contar productos en cada conteo
-            total_productos = db.query(ConteoDetalles).filter(
-                ConteoDetalles.IdConteo == conteo.idConteo
-            ).count()
-            
-            result.append(ConteoListResponse(
+        rows = query.offset(skip).limit(limit).all()
+
+        return [
+            ConteoListResponse(
                 idConteo=conteo.idConteo,
                 Fechal=conteo.Fechal,
                 FechaHora=conteo.FechaHora,
@@ -497,11 +565,39 @@ class ConteoService:
                 IdCentro=conteo.IdCentro,
                 IdUsuario=conteo.IdUsuario,
                 Estatus=conteo.Estatus if conteo.Estatus is not None else 0,
-                total_productos=total_productos
-            ))
-        
-        return result
+                total_productos=int(total_productos or 0),
+            )
+            for conteo, total_productos in rows
+        ]
     
+    @staticmethod
+    def _build_conteo_response_from_loaded(conteo: Conteo) -> ConteoResponse:
+        """Construye respuesta usando relaciones ya cargadas (sin queries extra)."""
+        detalles = []
+        for detalle in conteo.detalles:
+            producto_nombre = detalle.producto.Producto if detalle.producto else "Sin nombre"
+            detalles.append({
+                "idConteoDetalles": detalle.idConteoDetalles,
+                "IdConteo": detalle.IdConteo,
+                "CodigoBarras": detalle.CodigoBarras,
+                "NSistema": detalle.NSistema,
+                "NExcistencia": detalle.NExcistencia,
+                "Precio": detalle.Precio,
+                "Producto": producto_nombre,
+            })
+
+        return ConteoResponse(
+            idConteo=conteo.idConteo,
+            Fechal=conteo.Fechal,
+            FechaHora=conteo.FechaHora,
+            Envio=conteo.Envio,
+            IdRealizo=conteo.IdRealizo,
+            IdCentro=conteo.IdCentro,
+            IdUsuario=conteo.IdUsuario,
+            Estatus=conteo.Estatus if conteo.Estatus is not None else 0,
+            detalles=detalles,
+        )
+
     @staticmethod
     def _build_conteo_response(db: Session, conteo: Conteo) -> ConteoResponse:
         """Construir respuesta completa del conteo con detalles"""

@@ -457,17 +457,11 @@ export default function EstadisticasPage() {
       setLoading(true)
       setError('')
 
-      const [conteosBase, sucursalesBase, catalogoBase] = await Promise.all([
-        conteosAPI.getConteos(),
+      const [conteosDetallados, sucursalesBase, categoryMap] = await Promise.all([
+        conteosAPI.getConteosConDetalles(isNivel4 && authSucursal ? authSucursal.IdCentro : undefined),
         conteosAPI.getSucursales(),
-        catalogoAPI.getProductos(),
+        catalogoAPI.getCategoriasMap(),
       ])
-
-      const categoryMap = (catalogoBase as CatalogProduct[]).reduce((acc: Record<string, string>, product) => {
-        acc[product.CodigoBarras] =
-          product.Categoria?.trim() || (product.IdCategoria ? `Categoría ${product.IdCategoria}` : 'Sin categoría')
-        return acc
-      }, {})
       setCategoryByCode(categoryMap)
 
       const sucursalesList = (sucursalesBase as SucursalData[])
@@ -482,22 +476,9 @@ export default function EstadisticasPage() {
       const allZones = Array.from(zoneSet).sort((a, b) => a.localeCompare(b))
       setZonas(allZones)
 
-      const conteosDetalladosRaw = await Promise.all(
-        (conteosBase as Array<{ idConteo: number }>).map(async (conteo) => {
-          try {
-            return await conteosAPI.getConteo(conteo.idConteo)
-          } catch {
-            return null
-          }
-        })
-      )
-
-      const conteosDetallados = conteosDetalladosRaw.filter(Boolean) as ConteoResponse[]
-
-      // Para nivel 4: filtrar solo a la sucursal que eligió al iniciar sesión
       const conteosParaProcesar = isNivel4 && authSucursal
-        ? conteosDetallados.filter((c) => c.IdCentro === authSucursal.IdCentro)
-        : conteosDetallados
+        ? (conteosDetallados as ConteoResponse[]).filter((c) => c.IdCentro === authSucursal.IdCentro)
+        : (conteosDetallados as ConteoResponse[])
 
       const sucursalesParaProcesar = isNivel4 && authSucursal
         ? sucursalesList.filter((s) => s.IdCentro === authSucursal.IdCentro)

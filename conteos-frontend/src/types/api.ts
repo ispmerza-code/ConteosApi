@@ -67,6 +67,14 @@ export interface ConteoListResponse {
   total_productos: number;
 }
 
+export interface ConteoResumenDashboard {
+  totalConteos: number;
+  conteosPendientes: number;
+  conteosNoValidados: number;
+  conteosValidados: number;
+  recientes: ConteoListResponse[];
+}
+
 export interface ConteoContestar {
   detalles: {
     CodigoBarras: string;

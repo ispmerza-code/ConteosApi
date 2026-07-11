@@ -75,11 +75,29 @@ export const conteosAPI = {
     const response = await api.get('/api/v1/conteos/sucursales')
     return response.data
   },
-  // Obtener todos los conteos (con filtro opcional por sucursal)
-  getConteos: async (idCentro?: string) => {
-    const params = new URLSearchParams({ limit: '1000' })
+  // Obtener conteos (listado ligero, sin detalles por producto)
+  getConteos: async (idCentro?: string, limit = 500) => {
+    const params = new URLSearchParams({ limit: String(limit) })
     if (idCentro) params.set('id_centro', idCentro)
     const response = await api.get(`/api/v1/conteos/?${params.toString()}`)
+    return response.data
+  },
+
+  // Resumen para dashboard (stats + últimos 5)
+  getConteosResumen: async (idCentro?: string) => {
+    const params = new URLSearchParams()
+    if (idCentro) params.set('id_centro', idCentro)
+    const qs = params.toString()
+    const response = await api.get(`/api/v1/conteos/resumen/dashboard${qs ? `?${qs}` : ''}`)
+    return response.data
+  },
+
+  // Conteos con detalles en una sola petición (estadísticas)
+  getConteosConDetalles: async (idCentro?: string) => {
+    const params = new URLSearchParams()
+    if (idCentro) params.set('id_centro', idCentro)
+    const qs = params.toString()
+    const response = await api.get(`/api/v1/conteos/con-detalles${qs ? `?${qs}` : ''}`)
     return response.data
   },
 
@@ -161,6 +179,12 @@ export const catalogoAPI = {
   // Obtener todos los productos
   getProductos: async () => {
     const response = await api.get('/api/v1/catalogo/')
+    return response.data
+  },
+
+  // Mapa código → categoría (ligero, para estadísticas)
+  getCategoriasMap: async (): Promise<Record<string, string>> => {
+    const response = await api.get('/api/v1/catalogo/categorias/map')
     return response.data
   },
 

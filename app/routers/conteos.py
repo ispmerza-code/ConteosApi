@@ -12,7 +12,7 @@ from app.core.security import (
 )
 from app.schemas.schemas import (
     ConteoCreate, ConteoAsignar, ConteoEdit, ConteoContestar, ConteoValidar,
-    ConteoResponse, ConteoListResponse, SuccessResponse
+    ConteoResponse, ConteoListResponse, ConteoResumenDashboard, SuccessResponse
 )
 from app.services.conteo_service import ConteoService
 from app.models.models import Usuarios, Sucursales, UsuarioSucursal
@@ -144,6 +144,34 @@ async def eliminar_conteo(
     """
     result = ConteoService.eliminar_conteo(db, conteo_id, current_user.IdUsuarios)
     return SuccessResponse(message=result["message"])
+
+@router.get("/resumen/dashboard", response_model=ConteoResumenDashboard)
+async def resumen_dashboard(
+    id_centro: Optional[str] = Query(None, description="Filtrar por ID de centro/sucursal"),
+    db: Session = Depends(get_db),
+    current_user: Usuarios = Depends(require_any_user),
+):
+    """Resumen agregado para el dashboard (stats + últimos 5 conteos)."""
+    allowed = get_allowed_centros(current_user, db)
+    return ConteoService.obtener_resumen_dashboard(
+        db=db,
+        id_centro=id_centro,
+        allowed_centros=allowed,
+    )
+
+@router.get("/con-detalles", response_model=List[ConteoResponse])
+async def listar_conteos_con_detalles(
+    id_centro: Optional[str] = Query(None, description="Filtrar por ID de centro/sucursal"),
+    db: Session = Depends(get_db),
+    current_user: Usuarios = Depends(require_any_user),
+):
+    """Lista conteos con detalles en una sola petición (p. ej. estadísticas)."""
+    allowed = get_allowed_centros(current_user, db)
+    return ConteoService.listar_conteos_con_detalles(
+        db=db,
+        id_centro=id_centro,
+        allowed_centros=allowed,
+    )
 
 @router.get("/{conteo_id}", response_model=ConteoResponse)
 async def obtener_conteo(
