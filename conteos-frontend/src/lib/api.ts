@@ -75,12 +75,44 @@ export const conteosAPI = {
     const response = await api.get('/api/v1/conteos/sucursales')
     return response.data
   },
-  // Obtener conteos (listado ligero, sin detalles por producto)
-  getConteos: async (idCentro?: string, limit = 500) => {
-    const params = new URLSearchParams({ limit: String(limit) })
-    if (idCentro) params.set('id_centro', idCentro)
+  // Obtener conteos paginados (listado ligero, sin detalles por producto)
+  getConteosPaginados: async (opts: {
+    skip?: number
+    limit?: number
+    idCentro?: string
+    envio?: number
+    estatus?: number
+    q?: string
+    centro?: string
+    fechaDesde?: string
+    fechaHasta?: string
+    orden?: 'recent' | 'oldest'
+  } = {}) => {
+    const params = new URLSearchParams()
+    params.set('skip', String(opts.skip ?? 0))
+    params.set('limit', String(opts.limit ?? 20))
+    if (opts.idCentro) params.set('id_centro', opts.idCentro)
+    if (opts.envio !== undefined) params.set('envio', String(opts.envio))
+    if (opts.estatus !== undefined) params.set('estatus', String(opts.estatus))
+    if (opts.q?.trim()) params.set('q', opts.q.trim())
+    if (opts.centro?.trim()) params.set('centro', opts.centro.trim())
+    if (opts.fechaDesde) params.set('fecha_desde', opts.fechaDesde)
+    if (opts.fechaHasta) params.set('fecha_hasta', opts.fechaHasta)
+    params.set('orden', opts.orden === 'oldest' ? 'asc' : 'desc')
     const response = await api.get(`/api/v1/conteos/?${params.toString()}`)
     return response.data
+  },
+
+  // Compatibilidad: devuelve solo items (para contestar, dashboard, etc.)
+  getConteos: async (idCentro?: string, limit = 500, envio?: number, estatus?: number) => {
+    const data = await conteosAPI.getConteosPaginados({
+      skip: 0,
+      limit,
+      idCentro,
+      envio,
+      estatus,
+    })
+    return data.items
   },
 
   // Resumen para dashboard (stats + últimos 5)
@@ -176,9 +208,25 @@ export const conteosAPI = {
 
 // Catálogo API
 export const catalogoAPI = {
-  // Obtener todos los productos
-  getProductos: async () => {
-    const response = await api.get('/api/v1/catalogo/')
+  getProductosPaginados: async (opts: {
+    skip?: number
+    limit?: number
+    q?: string
+    familia?: string
+    categoria?: string
+  } = {}) => {
+    const params = new URLSearchParams()
+    params.set('skip', String(opts.skip ?? 0))
+    params.set('limit', String(opts.limit ?? 20))
+    if (opts.q?.trim()) params.set('q', opts.q.trim())
+    if (opts.familia) params.set('familia', opts.familia)
+    if (opts.categoria) params.set('categoria', opts.categoria)
+    const response = await api.get(`/api/v1/catalogo/?${params.toString()}`)
+    return response.data
+  },
+
+  getFiltros: async (): Promise<{ familias: string[]; categorias: string[] }> => {
+    const response = await api.get('/api/v1/catalogo/filtros')
     return response.data
   },
 

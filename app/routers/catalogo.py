@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
 from typing import List, Optional
@@ -6,7 +6,12 @@ from typing import List, Optional
 from app.core.database import get_db
 from app.core.security import get_current_user
 from app.models.models import Usuarios, ConteoDetalles
-from app.schemas.schemas import ProductoCreate, ProductoResponse
+from app.schemas.schemas import (
+    ProductoCreate,
+    ProductoResponse,
+    ProductoListResponse,
+    CatalogoFiltrosResponse,
+)
 from app.services.catalogo_service import CatalogoService
 
 router = APIRouter(
@@ -14,16 +19,28 @@ router = APIRouter(
     tags=["catalogo"]
 )
 
-@router.get("/", response_model=List[ProductoResponse])
+@router.get("/", response_model=ProductoListResponse)
 async def listar_productos(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(20, ge=1, le=100),
+    q: Optional[str] = Query(None, description="Buscar por código, nombre o material"),
+    familia: Optional[str] = Query(None),
+    categoria: Optional[str] = Query(None),
     db: Session = Depends(get_db),
-    current_user: Usuarios = Depends(get_current_user)
+    current_user: Usuarios = Depends(get_current_user),
 ):
-    """
-    Obtener todos los productos del catálogo.
-    Solo usuarios autenticados pueden ver los productos.
-    """
-    return CatalogoService.listar_productos(db)
+    """Listado paginado del catálogo."""
+    return CatalogoService.listar_productos(
+        db, skip=skip, limit=limit, q=q, familia=familia, categoria=categoria
+    )
+
+@router.get("/filtros", response_model=CatalogoFiltrosResponse)
+async def obtener_filtros_catalogo(
+    db: Session = Depends(get_db),
+    current_user: Usuarios = Depends(get_current_user),
+):
+    """Familias y categorías para filtros del catálogo."""
+    return CatalogoService.obtener_filtros(db)
 
 @router.get("/categorias/map")
 async def mapa_categorias(

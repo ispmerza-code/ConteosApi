@@ -1,6 +1,7 @@
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import NullPool
 from app.core.config import settings
 import os
 
@@ -25,13 +26,16 @@ def _build_connect_args() -> dict:
 def get_engine():
     global _engine
     if _engine is None:
-        _engine = create_engine(
-            settings.DATABASE_URL,
-            pool_pre_ping=True,
-            pool_recycle=300,
-            echo=False,
-            connect_args=_build_connect_args(),
-        )
+        engine_kwargs = {
+            "pool_pre_ping": True,
+            "echo": False,
+            "connect_args": _build_connect_args(),
+        }
+        if os.getenv("VERCEL"):
+            engine_kwargs["poolclass"] = NullPool
+        else:
+            engine_kwargs["pool_recycle"] = 300
+        _engine = create_engine(settings.DATABASE_URL, **engine_kwargs)
     return _engine
 
 

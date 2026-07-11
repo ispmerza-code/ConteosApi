@@ -36,7 +36,7 @@ export default function Dashboard() {
   useEffect(() => {
     if (filtroEstatus === null || fullConteos.length > 0 || !user) return
     const idCentroFiltro = user?.NivelUsuario === 4 ? selectedSucursal?.IdCentro : undefined
-    conteosAPI.getConteos(idCentroFiltro).then(setFullConteos).catch(console.error)
+    conteosAPI.getConteos(idCentroFiltro, 200, undefined, filtroEstatus).then(setFullConteos).catch(console.error)
   }, [filtroEstatus, fullConteos.length, user, selectedSucursal])
 
   const loadDashboardData = async () => {
@@ -144,9 +144,7 @@ export default function Dashboard() {
     user.NivelUsuario === 1 || user.NivelUsuario === 2 || [52033, 61752].includes(user.IdUsuarios)
   )
 
-  const conteosParaMostrar = filtroEstatus !== null
-    ? fullConteos.filter((c: ConteoListResponse) => c.Estatus === filtroEstatus)
-    : allConteos
+  const conteosParaMostrar = filtroEstatus !== null ? fullConteos : allConteos
 
   if (loading) {
     return (

@@ -23,8 +23,11 @@ export default function CatalogoPage() {
   const router = useRouter()
   
   const [productos, setProductos] = useState<Producto[]>([])
-  const [filteredProductos, setFilteredProductos] = useState<Producto[]>([])
+  const [totalProductos, setTotalProductos] = useState(0)
+  const [familias, setFamilias] = useState<string[]>([])
+  const [categorias, setCategorias] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadingPage, setLoadingPage] = useState(false)
   const [showModal, setShowModal] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
   
@@ -48,51 +51,42 @@ export default function CatalogoPage() {
   })
 
   useEffect(() => {
-    loadProductos()
+    catalogoAPI.getFiltros()
+      .then((data) => {
+        setFamilias(data.familias)
+        setCategorias(data.categorias)
+      })
+      .catch(console.error)
   }, [])
 
   useEffect(() => {
-    applyFilters()
-  }, [searchTerm, familiaFilter, categoriaFilter, productos])
+    const timer = setTimeout(() => {
+      void loadProductos()
+    }, searchTerm ? 400 : 0)
+    return () => clearTimeout(timer)
+  }, [currentPage, searchTerm, familiaFilter, categoriaFilter])
 
   const loadProductos = async () => {
     try {
-      setLoading(true)
-      const data = await catalogoAPI.getProductos()
-      setProductos(data)
-      setFilteredProductos(data)
+      if (productos.length === 0) setLoading(true)
+      else setLoadingPage(true)
+      const skip = (currentPage - 1) * itemsPerPage
+      const data = await catalogoAPI.getProductosPaginados({
+        skip,
+        limit: itemsPerPage,
+        q: searchTerm,
+        familia: familiaFilter || undefined,
+        categoria: categoriaFilter || undefined,
+      })
+      setProductos(data.items)
+      setTotalProductos(data.total)
     } catch (error) {
       console.error('Error loading products:', error)
       alert('Error al cargar productos')
     } finally {
       setLoading(false)
+      setLoadingPage(false)
     }
-  }
-
-  const applyFilters = () => {
-    let filtered = [...productos]
-    
-    // Filtro de búsqueda
-    if (searchTerm) {
-      filtered = filtered.filter(p => 
-        p.CodigoBarras.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.Producto.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.IdMaterial.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    }
-    
-    // Filtro de familia
-    if (familiaFilter) {
-      filtered = filtered.filter(p => p.Familia === familiaFilter)
-    }
-    
-    // Filtro de categoría
-    if (categoriaFilter) {
-      filtered = filtered.filter(p => p.Categoria === categoriaFilter)
-    }
-    
-    setFilteredProductos(filtered)
-    setCurrentPage(1)
   }
 
   const handleCreateProducto = async (e: React.FormEvent) => {
@@ -116,6 +110,21 @@ export default function CatalogoPage() {
     }
   }
 
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value)
+    setCurrentPage(1)
+  }
+
+  const handleFamiliaChange = (value: string) => {
+    setFamiliaFilter(value)
+    setCurrentPage(1)
+  }
+
+  const handleCategoriaChange = (value: string) => {
+    setCategoriaFilter(value)
+    setCurrentPage(1)
+  }
+
   const handleDeleteProducto = async (codigoBarras: string) => {
     if (!confirm('¿Estás seguro de eliminar este producto?')) return
     
@@ -133,17 +142,13 @@ export default function CatalogoPage() {
     setSearchTerm('')
     setFamiliaFilter('')
     setCategoriaFilter('')
+    setCurrentPage(1)
   }
 
-  // Obtener familias y categorías únicas para filtros
-  const familias = Array.from(new Set(productos.map(p => p.Familia))).sort()
-  const categorias = Array.from(new Set(productos.map(p => p.Categoria))).sort()
-
-  // Paginación
-  const indexOfLastItem = currentPage * itemsPerPage
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage
-  const currentItems = filteredProductos.slice(indexOfFirstItem, indexOfLastItem)
-  const totalPages = Math.ceil(filteredProductos.length / itemsPerPage)
+  const totalPages = Math.max(1, Math.ceil(totalProductos / itemsPerPage))
+  const indexOfFirstItem = totalProductos === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1
+  const indexOfLastItem = Math.min(currentPage * itemsPerPage, totalProductos)
+  const currentItems = productos
 
   const goToPage = (page: number) => {
     setCurrentPage(page)
@@ -202,7 +207,8 @@ export default function CatalogoPage() {
             <div>
               <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Catálogo de Productos</h1>
               <p className="text-gray-600 mt-1">
-                {filteredProductos.length} productos encontrados
+                {totalProductos} productos encontrados
+                {totalProductos > 0 && ` · mostrando ${indexOfFirstItem}-${indexOfLastItem}`}
               </p>
             </div>
             <button
@@ -226,7 +232,7 @@ export default function CatalogoPage() {
                   type="text"
                   placeholder="Buscar por código de barras, nombre o material..."
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={(e) => handleSearchChange(e.target.value)}
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
@@ -257,7 +263,7 @@ export default function CatalogoPage() {
                   </label>
                   <select
                     value={familiaFilter}
-                    onChange={(e) => setFamiliaFilter(e.target.value)}
+                    onChange={(e) => handleFamiliaChange(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
                     <option value="">Todas las familias</option>
@@ -273,7 +279,7 @@ export default function CatalogoPage() {
                   </label>
                   <select
                     value={categoriaFilter}
-                    onChange={(e) => setCategoriaFilter(e.target.value)}
+                    onChange={(e) => handleCategoriaChange(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
                     <option value="">Todas las categorías</option>
@@ -389,7 +395,7 @@ export default function CatalogoPage() {
             </table>
           </div>
 
-          {filteredProductos.length === 0 && (
+          {totalProductos === 0 && !loading && !loadingPage && (
             <div className="text-center py-12">
               <FiPackage className="w-12 h-12 text-gray-400 mx-auto mb-4" />
               <p className="text-gray-500 font-medium">No se encontraron productos</p>
@@ -402,11 +408,10 @@ export default function CatalogoPage() {
             <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
                 <p className="text-sm text-gray-700">
-                  Mostrando <span className="font-medium">{indexOfFirstItem + 1}</span> a{' '}
-                  <span className="font-medium">
-                    {Math.min(indexOfLastItem, filteredProductos.length)}
-                  </span>{' '}
-                  de <span className="font-medium">{filteredProductos.length}</span> productos
+                  Mostrando <span className="font-medium">{indexOfFirstItem}</span> a{' '}
+                  <span className="font-medium">{indexOfLastItem}</span>{' '}
+                  de <span className="font-medium">{totalProductos}</span> productos
+                  {loadingPage && <span className="ml-2 text-gray-400">(cargando…)</span>}
                 </p>
 
                 <div className="flex items-center gap-2">

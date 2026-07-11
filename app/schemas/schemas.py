@@ -35,6 +35,16 @@ class ProductoResponse(BaseModel):
     class Config:
         from_attributes = True
 
+class ProductoListResponse(BaseModel):
+    items: List[ProductoResponse]
+    total: int
+    skip: int
+    limit: int
+
+class CatalogoFiltrosResponse(BaseModel):
+    familias: List[str]
+    categorias: List[str]
+
 # Schemas para conteo detalles
 class ConteoDetalleBase(BaseModel):
     CodigoBarras: str = Field(..., description="Código de barras del producto")
@@ -117,6 +127,12 @@ class ConteoListResponse(BaseModel):
     
     class Config:
         from_attributes = True
+
+class ConteoListPaginatedResponse(BaseModel):
+    items: List[ConteoListResponse]
+    total: int
+    skip: int
+    limit: int
 
 class ConteoResumenDashboard(BaseModel):
     totalConteos: int

@@ -32,7 +32,7 @@ export default function ContestarConteos() {
     try {
       setLoadingData(true)
       const [conteos, sucursales] = await Promise.all([
-        conteosAPI.getConteos(undefined, 500),
+        conteosAPI.getConteos(undefined, 500, 0),
         conteosAPI.getSucursales()
       ])
 
@@ -48,7 +48,7 @@ export default function ContestarConteos() {
       // Para otros niveles: devuelve todas
       const sucursalesIds = Object.keys(sucursalesLookup)
       const asignados = conteos.filter((conteo: ConteoListResponse) =>
-        conteo.Envio === 0 && sucursalesIds.includes(conteo.IdCentro)
+        sucursalesIds.includes(conteo.IdCentro)
       )
       
       setConteosAsignados(asignados)

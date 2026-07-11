@@ -1,4 +1,5 @@
 from typing import List, Optional
+from datetime import date
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session, joinedload
 from app.core.database import get_db
@@ -12,7 +13,7 @@ from app.core.security import (
 )
 from app.schemas.schemas import (
     ConteoCreate, ConteoAsignar, ConteoEdit, ConteoContestar, ConteoValidar,
-    ConteoResponse, ConteoListResponse, ConteoResumenDashboard, SuccessResponse
+    ConteoResponse, ConteoListResponse, ConteoListPaginatedResponse, ConteoResumenDashboard, SuccessResponse
 )
 from app.services.conteo_service import ConteoService
 from app.models.models import Usuarios, Sucursales, UsuarioSucursal
@@ -187,30 +188,42 @@ async def obtener_conteo(
     allowed = get_allowed_centros(current_user, db)
     return ConteoService.obtener_conteo(db, conteo_id, allowed_centros=allowed)
 
-@router.get("/", response_model=List[ConteoListResponse])
+@router.get("/", response_model=ConteoListPaginatedResponse)
 async def listar_conteos(
     skip: int = Query(0, ge=0, description="Número de registros a omitir"),
-    limit: int = Query(100, ge=1, le=1000, description="Número máximo de registros a retornar"),
+    limit: int = Query(20, ge=1, le=500, description="Número máximo de registros a retornar"),
     id_centro: Optional[str] = Query(None, description="Filtrar por ID de centro/sucursal"),
     envio: Optional[int] = Query(None, ge=0, le=1, description="Filtrar por estado de envío (0=pendiente, 1=finalizado)"),
+    estatus: Optional[int] = Query(None, ge=0, le=1, description="Filtrar por estatus de validación"),
     id_usuario: Optional[int] = Query(None, description="Filtrar por ID de usuario asignado"),
+    q: Optional[str] = Query(None, description="Buscar por ID, centro, usuario o sucursal"),
+    centro: Optional[str] = Query(None, description="Filtrar por centro o nombre de sucursal"),
+    fecha_desde: Optional[date] = Query(None, description="Fecha inicial (inclusive)"),
+    fecha_hasta: Optional[date] = Query(None, description="Fecha final (inclusive)"),
+    orden: str = Query("desc", pattern="^(asc|desc)$", description="Orden por fecha"),
     db: Session = Depends(get_db),
     current_user: Usuarios = Depends(require_any_user)
 ):
     """
-    Listar conteos con filtros opcionales.
+    Listar conteos paginados con filtros opcionales.
 
     Niveles 2 (Coordinador de zona) y 4 (APP) solo ven conteos de sus sucursales asignadas.
     """
     allowed = get_allowed_centros(current_user, db)
-    return ConteoService.listar_conteos(
+    return ConteoService.listar_conteos_paginados(
         db=db,
         skip=skip,
         limit=limit,
         id_centro=id_centro,
         envio=envio,
+        estatus=estatus,
         id_usuario=id_usuario,
         allowed_centros=allowed,
+        q=q,
+        centro=centro,
+        fecha_desde=fecha_desde,
+        fecha_hasta=fecha_hasta,
+        orden=orden,
     )
 
 @router.get("/usuario/{user_id}", response_model=List[ConteoListResponse])
