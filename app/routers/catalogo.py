@@ -4,7 +4,7 @@ from sqlalchemy import desc
 from typing import List, Optional
 
 from app.core.database import get_db
-from app.core.security import get_current_user
+from app.core.security import require_conteos_access
 from app.models.models import Usuarios, ConteoDetalles
 from app.schemas.schemas import (
     ProductoCreate,
@@ -27,7 +27,7 @@ async def listar_productos(
     familia: Optional[str] = Query(None),
     categoria: Optional[str] = Query(None),
     db: Session = Depends(get_db),
-    current_user: Usuarios = Depends(get_current_user),
+    current_user: Usuarios = Depends(require_conteos_access),
 ):
     """Listado paginado del catálogo."""
     return CatalogoService.listar_productos(
@@ -37,7 +37,7 @@ async def listar_productos(
 @router.get("/filtros", response_model=CatalogoFiltrosResponse)
 async def obtener_filtros_catalogo(
     db: Session = Depends(get_db),
-    current_user: Usuarios = Depends(get_current_user),
+    current_user: Usuarios = Depends(require_conteos_access),
 ):
     """Familias y categorías para filtros del catálogo."""
     return CatalogoService.obtener_filtros(db)
@@ -45,7 +45,7 @@ async def obtener_filtros_catalogo(
 @router.get("/categorias/map")
 async def mapa_categorias(
     db: Session = Depends(get_db),
-    current_user: Usuarios = Depends(get_current_user)
+    current_user: Usuarios = Depends(require_conteos_access)
 ):
     """Mapa código de barras → categoría (ligero, para estadísticas)."""
     return CatalogoService.mapa_categorias(db)
@@ -54,7 +54,7 @@ async def mapa_categorias(
 async def obtener_producto(
     codigo_barras: str,
     db: Session = Depends(get_db),
-    current_user: Usuarios = Depends(get_current_user)
+    current_user: Usuarios = Depends(require_conteos_access)
 ):
     """
     Obtener un producto específico por código de barras.
@@ -67,7 +67,7 @@ async def obtener_producto(
 async def ultimo_precio_producto(
     codigo_barras: str,
     db: Session = Depends(get_db),
-    current_user: Usuarios = Depends(get_current_user)
+    current_user: Usuarios = Depends(require_conteos_access)
 ):
     """
     Devuelve el último precio registrado en conteos para un código de barras.
@@ -85,7 +85,7 @@ async def ultimo_precio_producto(
 async def crear_producto(
     producto_data: ProductoCreate,
     db: Session = Depends(get_db),
-    current_user: Usuarios = Depends(get_current_user)
+    current_user: Usuarios = Depends(require_conteos_access)
 ):
     """
     Crear un nuevo producto en el catálogo.
@@ -97,7 +97,7 @@ async def crear_producto(
 async def eliminar_producto(
     codigo_barras: str,
     db: Session = Depends(get_db),
-    current_user: Usuarios = Depends(get_current_user)
+    current_user: Usuarios = Depends(require_conteos_access)
 ):
     """
     Eliminar un producto del catálogo por código de barras.

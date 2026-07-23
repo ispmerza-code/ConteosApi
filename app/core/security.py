@@ -12,25 +12,33 @@ from app.schemas.schemas import TokenData
 security = HTTPBearer()
 
 # ---------------------------------------------------------------------------
-# Roles de usuario según nivelusuarios en siniestros_scisp
+# Roles con acceso al módulo de conteos
+# Niveles permitidos: 1, 2, 4, 7, 8, 33
 # ---------------------------------------------------------------------------
 USER_ROLES = {
     1: "admin",
     2: "coordinador_zona",
-    3: "monitorista_cctv",
     4: "app",
     7: "admin_cctv",
-    8: "supervision_cctv",
+    8: "supervision_cctv",  # mismos permisos que admin (nivel 1)
+    33: "monitorista_soporte",  # hereda lo que antes tenía el nivel 3
 }
 
-# Niveles con acceso restringido: solo ven sucursales asignadas (usuariossucursal)
+# Únicos niveles autorizados a usar el módulo de conteos
+NIVELES_CONTEOS_PERMITIDOS = {1, 2, 4, 7, 8, 33}
+
+# Solo ven sucursales asignadas (usuariossucursal)
 NIVELES_SUCURSALES_RESTRINGIDAS = {2, 4}
 
 # Permisos por acción
-NIVELES_CONTESTAR  = {1, 4, 8}   # Admin, APP, Supervisión CCTV (monitorista ya no contesta)
-NIVELES_ASIGNAR    = {1, 2, 3, 7, 8}  # Todos excepto APP
-NIVELES_ELIMINAR   = {1, 8}       # Admin, Supervisión CCTV
-NIVELES_EDITAR     = {1, 2, 3, 7, 8}  # Todos excepto APP
+# 1 y 8 = acceso total; 2 puede contestar; 33 = ex-monitorista (3)
+NIVELES_CONTESTAR = {1, 2, 4, 8}
+NIVELES_ASIGNAR = {1, 2, 33, 7, 8}
+NIVELES_ELIMINAR = {1, 8}
+NIVELES_EDITAR = {1, 2, 33, 7, 8}
+NIVELES_VALIDAR = {1, 33, 7, 8}
+
+MSG_SIN_PERMISO_CONTEOS = "No tienes permiso de visualizar conteos"
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
@@ -88,13 +96,10 @@ def get_current_user(
     return user
 
 
-# ---------------------------------------------------------------------------
-# Helper: obtiene lista de IdCentro permitidos para el usuario.
-# Retorna None si puede ver todo, o una lista de strings si está restringido.
-# ---------------------------------------------------------------------------
 def get_allowed_centros(user: Usuarios, db: Session) -> Optional[List[str]]:
+    """None = sin restricción; lista = solo esos IdCentro."""
     if user.NivelUsuario not in NIVELES_SUCURSALES_RESTRINGIDAS:
-        return None  # Sin restricción
+        return None
     centros = db.query(UsuarioSucursal.IdCentro).filter(
         UsuarioSucursal.IdUsuario == user.IdUsuarios,
         UsuarioSucursal.IdCentro.isnot(None)
@@ -102,12 +107,18 @@ def get_allowed_centros(user: Usuarios, db: Session) -> Optional[List[str]]:
     return [c[0] for c in centros]
 
 
-# ---------------------------------------------------------------------------
-# Dependencias de permisos
-# ---------------------------------------------------------------------------
-
 def require_any_user(current_user: Usuarios = Depends(get_current_user)) -> Usuarios:
     """Cualquier usuario autenticado y activo."""
+    return current_user
+
+
+def require_conteos_access(current_user: Usuarios = Depends(get_current_user)) -> Usuarios:
+    """Solo niveles autorizados al módulo de conteos."""
+    if current_user.NivelUsuario not in NIVELES_CONTEOS_PERMITIDOS:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=MSG_SIN_PERMISO_CONTEOS,
+        )
     return current_user
 
 
@@ -121,30 +132,32 @@ def _check_nivel(user: Usuarios, allowed: set, action: str) -> Usuarios:
     return user
 
 
-def require_contestar(current_user: Usuarios = Depends(get_current_user)) -> Usuarios:
-    """Niveles permitidos: 1 (Admin), 4 (APP), 8 (Supervisión CCTV)."""
+def require_contestar(current_user: Usuarios = Depends(require_conteos_access)) -> Usuarios:
+    """Admin (1), Coordinador zona (2), APP (4), Supervisión/Admin equiv. (8)."""
     return _check_nivel(current_user, NIVELES_CONTESTAR, "contestar conteos")
 
 
-def require_asignar(current_user: Usuarios = Depends(get_current_user)) -> Usuarios:
-    """Niveles permitidos: 1, 2, 3, 7, 8. APP no puede asignar."""
+def require_asignar(current_user: Usuarios = Depends(require_conteos_access)) -> Usuarios:
+    """Admin, Coord. zona, Monitorista soporte (33), Admin CCTV (7), nivel 8. APP no."""
     return _check_nivel(current_user, NIVELES_ASIGNAR, "asignar conteos")
 
 
-def require_eliminar(current_user: Usuarios = Depends(get_current_user)) -> Usuarios:
-    """Niveles permitidos: 1 (Admin), 8 (Supervisión CCTV)."""
+def require_eliminar(current_user: Usuarios = Depends(require_conteos_access)) -> Usuarios:
+    """Admin (1) y nivel 8 (mismos permisos que admin)."""
     return _check_nivel(current_user, NIVELES_ELIMINAR, "eliminar conteos")
 
 
-def require_editar(current_user: Usuarios = Depends(get_current_user)) -> Usuarios:
-    """Niveles permitidos: 1, 2, 3, 7, 8. APP no puede editar."""
+def require_editar(current_user: Usuarios = Depends(require_conteos_access)) -> Usuarios:
+    """Admin, Coord. zona, Monitorista soporte (33), Admin CCTV (7), nivel 8. APP no."""
     return _check_nivel(current_user, NIVELES_EDITAR, "editar conteos")
 
 
-# ---------------------------------------------------------------------------
-# Aliases conservados por compatibilidad con routers existentes
-# (se irán reemplazando por los nuevos nombres)
-# ---------------------------------------------------------------------------
-require_admin                 = require_eliminar
-require_admin_or_supervisor   = require_editar
-require_admin_cca_supervisor  = require_asignar
+def require_validar(current_user: Usuarios = Depends(require_conteos_access)) -> Usuarios:
+    """Admin, Monitorista soporte (33), Admin CCTV (7), nivel 8. APP y coord. zona no."""
+    return _check_nivel(current_user, NIVELES_VALIDAR, "validar conteos")
+
+
+# Aliases por compatibilidad
+require_admin = require_eliminar
+require_admin_or_supervisor = require_editar
+require_admin_cca_supervisor = require_asignar

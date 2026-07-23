@@ -82,7 +82,14 @@ export interface ConteoContestar {
   }[];
 }
 
-export type UserRole = 'administrador' | 'supervisor' | 'cca' | 'app' | 'admin_cctv' | 'supervision_cctv';
+export type UserRole =
+  | 'administrador'
+  | 'supervisor'
+  | 'app'
+  | 'admin_cctv'
+  | 'supervision_cctv'
+  | 'monitorista_soporte'
+  | 'desconocido';
 
 export interface Usuario {
   IdUser: string;

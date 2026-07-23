@@ -7,6 +7,15 @@ import { useAuth } from '@/context/AuthContext'
 import { conteosAPI } from '@/lib/api'
 import { formatShortDate, formatTime } from '@/lib/dateUtils'
 import { ConteoListResponse, User } from '@/types/api'
+import {
+  getRoleLabel,
+  NIVELES_ASIGNAR,
+  NIVELES_CONTESTAR,
+  NIVELES_EDITAR,
+  MSG_SIN_PERMISO_CONTEOS,
+  puedeAccederConteos,
+  puedeGestionarApps,
+} from '@/lib/roles'
 
 export default function Dashboard() {
   const { user, logout, selectedSucursal } = useAuth()
@@ -28,13 +37,17 @@ export default function Dashboard() {
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date())
 
   useEffect(() => {
-    if (user) {
-      loadDashboardData()
+    if (!user) return
+    if (!puedeAccederConteos(user.NivelUsuario)) {
+      setLoading(false)
+      return
     }
+    loadDashboardData()
   }, [user])
 
   useEffect(() => {
     if (filtroEstatus === null || fullConteos.length > 0 || !user) return
+    if (!puedeAccederConteos(user.NivelUsuario)) return
     const idCentroFiltro = user?.NivelUsuario === 4 ? selectedSucursal?.IdCentro : undefined
     conteosAPI.getConteos(idCentroFiltro, 200, undefined, filtroEstatus).then(setFullConteos).catch(console.error)
   }, [filtroEstatus, fullConteos.length, user, selectedSucursal])
@@ -103,10 +116,8 @@ export default function Dashboard() {
   }
 
   const getAppPerformer = (conteo: any): string | null => {
-    // Quien realizó físicamente el conteo: primero IdRealizo si es nivel 4
     const realizoInfo = usuariosInfoMap[conteo.IdRealizo]
     if (realizoInfo?.nivel === 4) return realizoInfo.nombre
-    // Si IdUsuario es nivel 4 (asignado)
     if (conteo.IdUsuario !== null && conteo.IdUsuario !== undefined) {
       const asignadoInfo = usuariosInfoMap[conteo.IdUsuario]
       if (asignadoInfo?.nivel === 4) return asignadoInfo.nombre
@@ -114,7 +125,6 @@ export default function Dashboard() {
     return null
   }
 
-  // Función para calcular tiempo transcurrido
   const getTimeAgo = (date: Date) => {
     const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000)
     if (seconds < 60) return `Hace ${seconds}s`
@@ -124,27 +134,31 @@ export default function Dashboard() {
     return `Hace ${hours}h`
   }
 
-  // Función para obtener rol por nivel de usuario
-  const getRoleByLevel = (nivel: number): string => {
-    switch(nivel) {
-      case 1: return 'Administrador'
-      case 2: return 'Supervisor'
-      case 3: return 'CCA'
-      case 4: return 'APP'
-      default: return 'Usuario'
-    }
-  }
-
-  const userRole = user ? getRoleByLevel(user.NivelUsuario) : null
-  const canCreateConteo = user && ['Administrador', 'Supervisor', 'APP'].includes(userRole || '')
-  const canAssignConteo = user && ['Administrador', 'Supervisor', 'CCA'].includes(userRole || '')
-  const canEditConteo = user && ['Administrador', 'Supervisor', 'CCA'].includes(userRole || '')
-  const canAnswerConteo = user?.NivelUsuario !== 3 // Monitoristas no contestan
-  const canGestionarApps = user && (
-    user.NivelUsuario === 1 || user.NivelUsuario === 2 || [52033, 61752].includes(user.IdUsuarios)
-  )
+  const userRole = user ? getRoleLabel(user.NivelUsuario) : null
+  const canCreateConteo = !!user && puedeAccederConteos(user.NivelUsuario) && user.NivelUsuario !== 33
+  const canAssignConteo = !!user && NIVELES_ASIGNAR.has(user.NivelUsuario)
+  const canEditConteo = !!user && NIVELES_EDITAR.has(user.NivelUsuario)
+  const canAnswerConteo = !!user && NIVELES_CONTESTAR.has(user.NivelUsuario)
+  const canGestionarApps = !!user && puedeGestionarApps(user.NivelUsuario, user.IdUsuarios)
 
   const conteosParaMostrar = filtroEstatus !== null ? fullConteos : allConteos
+
+  if (user && !puedeAccederConteos(user.NivelUsuario)) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+        <div className="max-w-md w-full bg-white shadow rounded-lg p-8 text-center space-y-4">
+          <FiAlertCircle className="w-12 h-12 text-amber-500 mx-auto" />
+          <h1 className="text-xl font-semibold text-gray-900">{MSG_SIN_PERMISO_CONTEOS}</h1>
+          <button
+            onClick={() => logout()}
+            className="inline-flex items-center justify-center px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700"
+          >
+            Cerrar sesión
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   if (loading) {
     return (

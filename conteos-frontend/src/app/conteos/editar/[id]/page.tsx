@@ -6,6 +6,7 @@ import { FiArrowLeft, FiSave, FiAlertCircle, FiPackage, FiEdit3 } from 'react-ic
 import { useAuth } from '@/context/AuthContext'
 import { conteosAPI } from '@/lib/api'
 import { formatShortDate } from '@/lib/dateUtils'
+import { NIVELES_EDITAR } from '@/lib/roles'
 
 interface ConteoDetalle {
   idConteoDetalles: number
@@ -49,8 +50,7 @@ export default function EditarConteoPage() {
       setLoading(true)
       setError(null)
 
-      // Nivel 4 (APP) no puede editar conteos
-      if (user?.NivelUsuario === 4) {
+      if (!user || !NIVELES_EDITAR.has(user.NivelUsuario)) {
         router.replace('/conteos')
         return
       }

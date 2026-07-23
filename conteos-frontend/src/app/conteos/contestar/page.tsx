@@ -7,6 +7,7 @@ import { useAuth } from '@/context/AuthContext'
 import { conteosAPI } from '@/lib/api'
 import { ConteoResponse, ConteoListResponse, ConteoDetalle } from '@/types/api'
 import { formatShortDate } from '@/lib/dateUtils'
+import { NIVELES_CONTESTAR } from '@/lib/roles'
 
 export default function ContestarConteos() {
   const { user } = useAuth()
@@ -21,12 +22,13 @@ export default function ContestarConteos() {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    if (user?.NivelUsuario === 3) {
+    if (!user) return
+    if (!NIVELES_CONTESTAR.has(user.NivelUsuario)) {
       router.replace('/dashboard')
       return
     }
     loadConteosAsignados()
-  }, [])
+  }, [user])
 
   const loadConteosAsignados = async () => {
     try {

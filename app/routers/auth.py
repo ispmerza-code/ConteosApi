@@ -5,7 +5,13 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session, joinedload
 from app.core.database import get_db
 from app.core.config import settings
-from app.core.security import authenticate_user, create_access_token, get_user_role, get_current_user
+from app.core.security import (
+    authenticate_user,
+    create_access_token,
+    get_user_role,
+    get_current_user,
+    require_conteos_access,
+)
 from app.schemas.schemas import Token, UsuarioLogin, UsuarioResponse
 from app.models.models import Usuarios, UsuarioSucursal, Sucursales
 
@@ -79,7 +85,7 @@ async def get_my_role(
 @router.get("/usuarios", response_model=List[UsuarioResponse])
 async def get_usuarios(
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(require_conteos_access)
 ):
     """Obtener lista de usuarios activos para asignación"""
     usuarios = db.query(Usuarios).filter(Usuarios.Estatus == 1).all()
@@ -94,7 +100,7 @@ async def get_usuarios(
 async def get_usuarios_por_sucursal(
     centro_id: str,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(require_conteos_access)
 ):
     """Obtener usuarios activos asignados a una sucursal específica"""
     asignaciones = (
@@ -122,7 +128,8 @@ async def get_usuarios_por_sucursal(
 # (además de NivelUsuario 1 y 2)
 # ---------------------------------------------------------------------------
 USERS_GESTION_APPS = {52033, 61752}
-NIVELES_GESTION_APPS = {1, 2}
+# Nivel 8 tiene los mismos permisos que admin (1)
+NIVELES_GESTION_APPS = {1, 2, 8}
 
 def _check_gestion_apps(current_user: Usuarios):
     if current_user.NivelUsuario not in NIVELES_GESTION_APPS and current_user.IdUsuarios not in USERS_GESTION_APPS:

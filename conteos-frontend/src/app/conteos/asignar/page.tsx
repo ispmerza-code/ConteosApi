@@ -6,6 +6,7 @@ import { FiCalendar, FiArrowLeft, FiSave, FiCamera, FiShoppingBag, FiTrash2, FiP
 import { useAuth } from '@/context/AuthContext'
 import { conteosAPI, catalogoAPI } from '@/lib/api'
 import { ConteoResponse, Sucursal } from '@/types/api'
+import { NIVELES_ASIGNAR } from '@/lib/roles'
 import dynamic from 'next/dynamic'
 
 const BarcodeScanner = dynamic(() => import('@/components/BarcodeScanner'), { ssr: false })
@@ -244,20 +245,8 @@ export default function AsignarConteo() {
     }
   }
 
-  // Función para obtener rol por nivel de usuario
-  const getRoleByLevel = (nivel: number): string => {
-    switch(nivel) {
-      case 1: return 'administrador'
-      case 2: return 'supervisor'
-      case 3: return 'cca'
-      case 4: return 'app'
-      default: return 'unknown'
-    }
-  }
-
   // Verificar permisos
-  const userRole = user ? getRoleByLevel(user.NivelUsuario) : null
-  if (!user || !['administrador', 'supervisor', 'cca'].includes(userRole || '')) {
+  if (!user || !NIVELES_ASIGNAR.has(user.NivelUsuario)) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">

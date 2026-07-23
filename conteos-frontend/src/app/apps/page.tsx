@@ -25,10 +25,10 @@ interface Sucursal {
   IdTipoSucursal?: string
 }
 
-// Usuarios con acceso a esta gestión (además de NivelUsuario 1 y 2)
+// Usuarios con acceso a esta gestión (además de NivelUsuario 1, 2 y 8)
 const USERS_CON_ACCESO = new Set([52033, 61752])
 const puedeGestionar = (nivel: number, id: number) =>
-  nivel === 1 || nivel === 2 || USERS_CON_ACCESO.has(id)
+  nivel === 1 || nivel === 2 || nivel === 8 || USERS_CON_ACCESO.has(id)
 
 // Colores de badge por letra inicial del IdCentro
 const BADGE_COLORS: Record<string, string> = {

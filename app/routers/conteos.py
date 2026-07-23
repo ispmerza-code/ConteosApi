@@ -4,11 +4,12 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session, joinedload
 from app.core.database import get_db
 from app.core.security import (
-    require_any_user,
+    require_conteos_access,
     require_contestar,
     require_asignar,
     require_editar,
     require_eliminar,
+    require_validar,
     get_allowed_centros,
 )
 from app.schemas.schemas import (
@@ -23,7 +24,7 @@ router = APIRouter()
 @router.get("/sucursales", response_model=List[dict])
 async def obtener_sucursales(
     db: Session = Depends(get_db),
-    current_user: Usuarios = Depends(require_any_user)
+    current_user: Usuarios = Depends(require_conteos_access)
 ):
     """Obtener lista de sucursales disponibles.
     Para NivelUsuario=4, retorna solo las sucursales de la zona asignada al usuario.
@@ -46,7 +47,7 @@ async def obtener_sucursales(
 async def crear_conteo(
     conteo_data: ConteoCreate,
     db: Session = Depends(get_db),
-    current_user: Usuarios = Depends(require_any_user)
+    current_user: Usuarios = Depends(require_conteos_access)
 ):
     """
     Crear un nuevo conteo.
@@ -64,8 +65,8 @@ async def asignar_conteo(
     """
     Asignar un conteo a otro usuario.
 
-    **Roles permitidos**: Admin (1), Coordinador de zona (2), Monitorista CCTV (3),
-    Admin CCTV (7), Supervisión CCTV (8). APP no puede asignar.
+    **Roles permitidos**: Admin (1), Coordinador de zona (2), Monitorista Soporte (33),
+    Admin CCTV (7), nivel 8. APP no puede asignar.
     """
     return ConteoService.asignar_conteo(db, conteo_data, current_user.IdUsuarios)
 
@@ -79,8 +80,8 @@ async def editar_conteo(
     """
     Editar un conteo existente (solo conteos pendientes Envio=0).
 
-    **Roles permitidos**: Admin (1), Coordinador de zona (2), Monitorista CCTV (3),
-    Admin CCTV (7), Supervisión CCTV (8). APP no puede editar.
+    **Roles permitidos**: Admin (1), Coordinador de zona (2), Monitorista Soporte (33),
+    Admin CCTV (7), nivel 8. APP no puede editar.
     """
     return ConteoService.editar_conteo(db, conteo_id, conteo_data, current_user.IdUsuarios)
 
@@ -108,8 +109,8 @@ async def contestar_conteo(
     """
     Contestar un conteo (actualizar existencias físicas).
 
-    **Roles permitidos**: Admin (1), APP (4), Supervisión CCTV (8).
-    Monitorista CCTV y Admin CCTV no pueden contestar.
+    **Roles permitidos**: Admin (1), Coordinador de zona (2), APP (4), nivel 8.
+    Monitorista Soporte (33) y Admin CCTV (7) no pueden contestar.
     """
     return ConteoService.contestar_conteo(db, conteo_id, conteo_data, current_user.IdUsuarios)
 
@@ -118,18 +119,14 @@ async def validar_conteo(
     conteo_id: int,
     conteo_data: ConteoValidar,
     db: Session = Depends(get_db),
-    current_user: Usuarios = Depends(require_any_user)
+    current_user: Usuarios = Depends(require_validar)
 ):
     """
     Validar un conteo: llenar existencias sistema y marcar como validado.
 
-    **Roles permitidos**: Admin (1), Monitorista CCTV (3), Admin CCTV (7), Supervisión CCTV (8).
-    APP (4) no puede validar.
+    **Roles permitidos**: Admin (1), Monitorista Soporte (33), Admin CCTV (7), nivel 8.
+    APP (4) y Coordinador de zona (2) no pueden validar.
     """
-    NIVELES_VALIDAR = {1, 3, 7, 8}
-    if current_user.NivelUsuario not in NIVELES_VALIDAR:
-        from fastapi import HTTPException
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tienes permiso para validar conteos")
     return ConteoService.validar_conteo(db, conteo_id, conteo_data, current_user.IdUsuarios)
 
 @router.delete("/{conteo_id}", response_model=SuccessResponse)
@@ -150,7 +147,7 @@ async def eliminar_conteo(
 async def resumen_dashboard(
     id_centro: Optional[str] = Query(None, description="Filtrar por ID de centro/sucursal"),
     db: Session = Depends(get_db),
-    current_user: Usuarios = Depends(require_any_user),
+    current_user: Usuarios = Depends(require_conteos_access),
 ):
     """Resumen agregado para el dashboard (stats + últimos 5 conteos)."""
     allowed = get_allowed_centros(current_user, db)
@@ -164,7 +161,7 @@ async def resumen_dashboard(
 async def listar_conteos_con_detalles(
     id_centro: Optional[str] = Query(None, description="Filtrar por ID de centro/sucursal"),
     db: Session = Depends(get_db),
-    current_user: Usuarios = Depends(require_any_user),
+    current_user: Usuarios = Depends(require_conteos_access),
 ):
     """Lista conteos con detalles en una sola petición (p. ej. estadísticas)."""
     allowed = get_allowed_centros(current_user, db)
@@ -178,7 +175,7 @@ async def listar_conteos_con_detalles(
 async def obtener_conteo(
     conteo_id: int,
     db: Session = Depends(get_db),
-    current_user: Usuarios = Depends(require_any_user)
+    current_user: Usuarios = Depends(require_conteos_access)
 ):
     """
     Obtener un conteo específico por ID.
@@ -202,7 +199,7 @@ async def listar_conteos(
     fecha_hasta: Optional[date] = Query(None, description="Fecha final (inclusive)"),
     orden: str = Query("desc", pattern="^(asc|desc)$", description="Orden por fecha"),
     db: Session = Depends(get_db),
-    current_user: Usuarios = Depends(require_any_user)
+    current_user: Usuarios = Depends(require_conteos_access)
 ):
     """
     Listar conteos paginados con filtros opcionales.
@@ -233,7 +230,7 @@ async def obtener_conteos_usuario(
     limit: int = Query(100, ge=1, le=1000, description="Número máximo de registros a retornar"),
     envio: Optional[int] = Query(None, ge=0, le=1, description="Filtrar por estado de envío"),
     db: Session = Depends(get_db),
-    current_user: Usuarios = Depends(require_any_user)
+    current_user: Usuarios = Depends(require_conteos_access)
 ):
     """Obtener conteos asignados a un usuario específico."""
     allowed = get_allowed_centros(current_user, db)
@@ -253,7 +250,7 @@ async def obtener_conteos_sucursal(
     limit: int = Query(100, ge=1, le=1000, description="Número máximo de registros a retornar"),
     envio: Optional[int] = Query(None, ge=0, le=1, description="Filtrar por estado de envío"),
     db: Session = Depends(get_db),
-    current_user: Usuarios = Depends(require_any_user)
+    current_user: Usuarios = Depends(require_conteos_access)
 ):
     """Obtener conteos de una sucursal específica."""
     allowed = get_allowed_centros(current_user, db)

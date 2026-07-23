@@ -4,9 +4,10 @@ import { useState } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { useRouter } from 'next/navigation'
 import { FiUser, FiLock, FiLogIn } from 'react-icons/fi'
+import { MSG_SIN_PERMISO_CONTEOS, puedeAccederConteos } from '@/lib/roles'
 
 export default function LoginPage() {
-  const { login, isLoading } = useAuth()
+  const { login, logout, isLoading } = useAuth()
   const router = useRouter()
   const [credentials, setCredentials] = useState({
     IdUsuarios: '',
@@ -30,6 +31,11 @@ export default function LoginPage() {
         IdUsuarios: parseInt(credentials.IdUsuarios),
         Contraseña: credentials.Contraseña
       })
+      if (!puedeAccederConteos(loggedUser.NivelUsuario)) {
+        logout({ redirect: false })
+        setError(MSG_SIN_PERMISO_CONTEOS)
+        return
+      }
       if (loggedUser.NivelUsuario === 4) {
         router.push('/seleccionar-sucursal')
       } else {

@@ -7,6 +7,7 @@ import { conteosAPI } from '@/lib/api'
 import { ConteoListResponse, User } from '@/types/api'
 import { formatShortDate } from '@/lib/dateUtils'
 import { useAuth } from '@/context/AuthContext'
+import { NIVELES_ASIGNAR, NIVELES_EDITAR, NIVELES_ELIMINAR } from '@/lib/roles'
 
 type StatusFilter = 'all' | 'pendiente' | 'sin_validar' | 'finalizado'
 
@@ -423,7 +424,7 @@ export function ConteosClient() {
                   >
                     <FiEye className="w-4 h-4 mr-1.5" /> Ver
                   </button>
-                  {conteo.Envio === 0 && user?.NivelUsuario !== 4 && (
+                  {conteo.Envio === 0 && user && NIVELES_EDITAR.has(user.NivelUsuario) && (
                     <button
                       onClick={() => router.push(`/conteos/editar/${conteo.idConteo}`)}
                       className="flex-1 inline-flex items-center justify-center px-3 py-2 text-sm font-medium rounded-md border border-orange-200 text-orange-700 bg-orange-50 hover:bg-orange-100"
@@ -431,7 +432,7 @@ export function ConteosClient() {
                       <FiEdit className="w-4 h-4 mr-1.5" /> Editar
                     </button>
                   )}
-                  {user?.NivelUsuario === 1 && (
+                  {user && NIVELES_ELIMINAR.has(user.NivelUsuario) && (
                     <button
                       onClick={() => handleDelete(conteo.idConteo)}
                       className="flex-1 inline-flex items-center justify-center px-3 py-2 text-sm font-medium rounded-md border border-red-200 text-red-700 bg-red-50 hover:bg-red-100"
@@ -510,7 +511,7 @@ export function ConteosClient() {
                         >
                           <FiEye className="w-5 h-5" />
                         </button>
-                        {conteo.Envio === 0 && user?.NivelUsuario !== 4 && (
+                        {conteo.Envio === 0 && user && NIVELES_EDITAR.has(user.NivelUsuario) && (
                           <button
                             onClick={() => router.push(`/conteos/editar/${conteo.idConteo}`)}
                             className="text-orange-600 hover:text-orange-900"
@@ -519,7 +520,7 @@ export function ConteosClient() {
                             <FiEdit className="w-5 h-5" />
                           </button>
                         )}
-                        {conteo.Envio === 1 && user && [1, 2, 3, 7, 8].includes(user.NivelUsuario) && (
+                        {conteo.Envio === 1 && user && NIVELES_ASIGNAR.has(user.NivelUsuario) && (
                           <button
                             onClick={async () => {
                               try {
@@ -538,7 +539,7 @@ export function ConteosClient() {
                             <FiPackage className="w-5 h-5" />
                           </button>
                         )}
-                        {user?.NivelUsuario === 1 && (
+                        {user && NIVELES_ELIMINAR.has(user.NivelUsuario) && (
                           <button
                             onClick={() => handleDelete(conteo.idConteo)}
                             className="text-red-600 hover:text-red-900"

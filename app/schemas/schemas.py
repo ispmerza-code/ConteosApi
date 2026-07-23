@@ -5,9 +5,11 @@ from enum import Enum
 
 class UserRole(str, Enum):
     ADMINISTRADOR = "administrador"
-    APP = "app"
-    CCA = "cca"
     SUPERVISOR = "supervisor"
+    APP = "app"
+    ADMIN_CCTV = "admin_cctv"
+    SUPERVISION_CCTV = "supervision_cctv"
+    MONITORISTA_SOPORTE = "monitorista_soporte"
 
 # Schemas para productos/catálogo
 class ProductoBase(BaseModel):

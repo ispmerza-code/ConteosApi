@@ -4,6 +4,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import { User, AuthResponse, UserRole, Sucursal } from '@/types/api';
 import { authAPI } from '@/lib/api';
 import { useRouter } from 'next/navigation';
+import { getRoleByLevel } from '@/lib/roles';
 
 interface AuthContextType {
   user: User | null;
@@ -12,25 +13,12 @@ interface AuthContextType {
   isAuthenticated: boolean;
   selectedSucursal: Sucursal | null;
   login: (credentials: { IdUsuarios: number; Contraseña: string }) => Promise<User>;
-  logout: () => void;
+  logout: (options?: { redirect?: boolean }) => void;
   selectSucursal: (sucursal: Sucursal) => void;
   clearSucursal: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-// Función para obtener rol por nivel de usuario
-const getRoleByLevel = (nivel: number): string => {
-  switch(nivel) {
-    case 1: return 'administrador'
-    case 2: return 'supervisor'
-    case 3: return 'cca'
-    case 4: return 'app'
-    case 7: return 'admin_cctv'
-    case 8: return 'supervision_cctv'
-    default: return 'administrador'
-  }
-}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
@@ -41,7 +29,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const isAuthenticated = !!user;
 
-  // Verificar token al cargar la aplicación
   useEffect(() => {
     const checkAuth = async () => {
       const token = localStorage.getItem('token');
@@ -57,7 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (savedSucursal) {
             setSelectedSucursal(JSON.parse(savedSucursal));
           }
-        } catch (error) {
+        } catch {
           localStorage.removeItem('token');
           localStorage.removeItem('user');
           localStorage.removeItem('selectedSucursal');
@@ -81,13 +68,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       setUser(authData.user_info);
       
-      // Calcular rol basado en NivelUsuario
       const userRole = getRoleByLevel(authData.user_info.NivelUsuario);
       setRole(userRole as UserRole);
 
       return authData.user_info;
     } catch (error: any) {
-      // Mejora mensaje para errores de red / certificado
       const networkMessage = 'Error de red al contactar el servidor. Verifica la URL de la API y el certificado TLS (ERR_CERT_AUTHORITY_INVALID) en la consola del navegador.'
       const detail = error?.response?.data?.detail
       if (!detail && (error?.message === 'Network Error' || /CERT/.test(String(error)))) {
@@ -98,14 +83,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const logout = () => {
+  const logout = (options?: { redirect?: boolean }) => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     localStorage.removeItem('selectedSucursal');
     setUser(null);
     setRole(null);
     setSelectedSucursal(null);
-    router.push('/login');
+    if (options?.redirect !== false) {
+      router.push('/login');
+    }
   };
 
   const selectSucursal = (sucursal: Sucursal) => {

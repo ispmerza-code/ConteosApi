@@ -8,7 +8,7 @@ import { ConteoResponse } from '@/types/api'
 import { formatLocalDate } from '@/lib/dateUtils'
 import { useAuth } from '@/context/AuthContext'
 
-const NIVELES_VALIDAR = new Set([1, 3, 7, 8])
+const NIVELES_VALIDAR = new Set([1, 33, 7, 8])
 
 export default function ValidarConteo() {
   const router = useRouter()
