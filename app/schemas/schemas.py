@@ -9,7 +9,7 @@ class UserRole(str, Enum):
     APP = "app"
     ADMIN_CCTV = "admin_cctv"
     SUPERVISION_CCTV = "supervision_cctv"
-    MONITORISTA_SOPORTE = "monitorista_soporte"
+    MONITORISTA_CCA = "monitorista_cca"
 
 # Schemas para productos/catálogo
 class ProductoBase(BaseModel):

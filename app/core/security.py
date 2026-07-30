@@ -13,7 +13,7 @@ security = HTTPBearer()
 
 # ---------------------------------------------------------------------------
 # Roles con acceso al módulo de conteos
-# Niveles permitidos: 1, 2, 4, 7, 8, 33
+# Niveles permitidos: 1, 2, 4, 7, 8, 32
 # ---------------------------------------------------------------------------
 USER_ROLES = {
     1: "admin",
@@ -21,22 +21,22 @@ USER_ROLES = {
     4: "app",
     7: "admin_cctv",
     8: "supervision_cctv",  # mismos permisos que admin (nivel 1)
-    33: "monitorista_soporte",  # hereda lo que antes tenía el nivel 3
+    32: "monitorista_cca",  # hereda lo que antes tenía el nivel 3
 }
 
 # Únicos niveles autorizados a usar el módulo de conteos
-NIVELES_CONTEOS_PERMITIDOS = {1, 2, 4, 7, 8, 33}
+NIVELES_CONTEOS_PERMITIDOS = {1, 2, 4, 7, 8, 32}
 
 # Solo ven sucursales asignadas (usuariossucursal)
 NIVELES_SUCURSALES_RESTRINGIDAS = {2, 4}
 
 # Permisos por acción
-# 1 y 8 = acceso total; 2 puede contestar; 33 = ex-monitorista (3)
+# 1 y 8 = acceso total; 2 puede contestar; 32 = ex-monitorista (3)
 NIVELES_CONTESTAR = {1, 2, 4, 8}
-NIVELES_ASIGNAR = {1, 2, 33, 7, 8}
+NIVELES_ASIGNAR = {1, 2, 32, 7, 8}
 NIVELES_ELIMINAR = {1, 8}
-NIVELES_EDITAR = {1, 2, 33, 7, 8}
-NIVELES_VALIDAR = {1, 33, 7, 8}
+NIVELES_EDITAR = {1, 2, 32, 7, 8}
+NIVELES_VALIDAR = {1, 32, 7, 8}
 
 MSG_SIN_PERMISO_CONTEOS = "No tienes permiso de visualizar conteos"
 
@@ -138,7 +138,7 @@ def require_contestar(current_user: Usuarios = Depends(require_conteos_access)) 
 
 
 def require_asignar(current_user: Usuarios = Depends(require_conteos_access)) -> Usuarios:
-    """Admin, Coord. zona, Monitorista soporte (33), Admin CCTV (7), nivel 8. APP no."""
+    """Admin, Coord. zona, Monitorista CCA (32), Admin CCTV (7), nivel 8. APP no."""
     return _check_nivel(current_user, NIVELES_ASIGNAR, "asignar conteos")
 
 
@@ -148,12 +148,12 @@ def require_eliminar(current_user: Usuarios = Depends(require_conteos_access)) -
 
 
 def require_editar(current_user: Usuarios = Depends(require_conteos_access)) -> Usuarios:
-    """Admin, Coord. zona, Monitorista soporte (33), Admin CCTV (7), nivel 8. APP no."""
+    """Admin, Coord. zona, Monitorista CCA (32), Admin CCTV (7), nivel 8. APP no."""
     return _check_nivel(current_user, NIVELES_EDITAR, "editar conteos")
 
 
 def require_validar(current_user: Usuarios = Depends(require_conteos_access)) -> Usuarios:
-    """Admin, Monitorista soporte (33), Admin CCTV (7), nivel 8. APP y coord. zona no."""
+    """Admin, Monitorista CCA (32), Admin CCTV (7), nivel 8. APP y coord. zona no."""
     return _check_nivel(current_user, NIVELES_VALIDAR, "validar conteos")
 
 

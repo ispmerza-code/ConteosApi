@@ -135,7 +135,7 @@ export default function Dashboard() {
   }
 
   const userRole = user ? getRoleLabel(user.NivelUsuario) : null
-  const canCreateConteo = !!user && puedeAccederConteos(user.NivelUsuario) && user.NivelUsuario !== 33
+  const canCreateConteo = !!user && puedeAccederConteos(user.NivelUsuario) && user.NivelUsuario !== 32
   const canAssignConteo = !!user && NIVELES_ASIGNAR.has(user.NivelUsuario)
   const canEditConteo = !!user && NIVELES_EDITAR.has(user.NivelUsuario)
   const canAnswerConteo = !!user && NIVELES_CONTESTAR.has(user.NivelUsuario)

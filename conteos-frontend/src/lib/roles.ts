@@ -1,12 +1,12 @@
 /** Constantes de roles/permisos alineadas con app/core/security.py */
 
-export const NIVELES_CONTEOS_PERMITIDOS = new Set([1, 2, 4, 7, 8, 33])
+export const NIVELES_CONTEOS_PERMITIDOS = new Set([1, 2, 4, 7, 8, 32])
 
 export const NIVELES_CONTESTAR = new Set([1, 2, 4, 8])
-export const NIVELES_ASIGNAR = new Set([1, 2, 33, 7, 8])
-export const NIVELES_EDITAR = new Set([1, 2, 33, 7, 8])
+export const NIVELES_ASIGNAR = new Set([1, 2, 32, 7, 8])
+export const NIVELES_EDITAR = new Set([1, 2, 32, 7, 8])
 export const NIVELES_ELIMINAR = new Set([1, 8])
-export const NIVELES_VALIDAR = new Set([1, 33, 7, 8])
+export const NIVELES_VALIDAR = new Set([1, 32, 7, 8])
 export const NIVELES_GESTION_APPS = new Set([1, 2, 8])
 export const USERS_GESTION_APPS = new Set([52033, 61752])
 
@@ -32,8 +32,8 @@ export function getRoleByLevel(nivel: number): string {
       return 'admin_cctv'
     case 8:
       return 'administrador' // mismos permisos que nivel 1
-    case 33:
-      return 'monitorista_soporte'
+    case 32:
+      return 'monitorista_cca'
     default:
       return 'desconocido'
   }
@@ -51,8 +51,8 @@ export function getRoleLabel(nivel: number): string {
       return 'Admin CCTV'
     case 8:
       return 'Administrador'
-    case 33:
-      return 'Monitorista Soporte'
+    case 32:
+      return 'Monitorista CCA'
     default:
       return 'Sin acceso'
   }

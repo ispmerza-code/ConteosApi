@@ -36,8 +36,8 @@ export default function CrearConteo() {
 
   useEffect(() => {
     if (!user) return
-    // Monitorista soporte (33): no crea desde esta pantalla (como el ex nivel 3)
-    if (user.NivelUsuario === 33) {
+    // Monitorista CCA (32): no crea desde esta pantalla (como el ex nivel 3)
+    if (user.NivelUsuario === 32) {
       router.replace('/dashboard')
       return
     }
@@ -238,7 +238,7 @@ export default function CrearConteo() {
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Crear Conteo</h1>
           <p className="mt-2 text-gray-600">
             {isNivel4
-              ? 'Captura las existencias físicas — Monitorista Soporte validará las existencias en sistema'
+              ? 'Captura las existencias físicas — Monitorista CCA validará las existencias en sistema'
               : 'Sigue los pasos para registrar un nuevo conteo de productos'}
           </p>
         </div>
@@ -677,7 +677,7 @@ export default function CrearConteo() {
               <FiCheckCircle className="w-6 h-6" />
               <div>
                 <p className="font-semibold">¡Conteo creado exitosamente!</p>
-                <p className="text-sm text-green-100">{user?.NivelUsuario === 4 ? 'Pendiente de validación por Monitorista Soporte.' : 'Ahora puedes asignarlo o comenzar a contestarlo.'}</p>
+                <p className="text-sm text-green-100">{user?.NivelUsuario === 4 ? 'Pendiente de validación por Monitorista CCA.' : 'Ahora puedes asignarlo o comenzar a contestarlo.'}</p>
               </div>
             </div>
           )}

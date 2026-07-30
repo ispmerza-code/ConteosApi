@@ -88,7 +88,7 @@ export type UserRole =
   | 'app'
   | 'admin_cctv'
   | 'supervision_cctv'
-  | 'monitorista_soporte'
+  | 'monitorista_cca'
   | 'desconocido';
 
 export interface Usuario {

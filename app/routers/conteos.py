@@ -65,7 +65,7 @@ async def asignar_conteo(
     """
     Asignar un conteo a otro usuario.
 
-    **Roles permitidos**: Admin (1), Coordinador de zona (2), Monitorista Soporte (33),
+    **Roles permitidos**: Admin (1), Coordinador de zona (2), Monitorista CCA (32),
     Admin CCTV (7), nivel 8. APP no puede asignar.
     """
     return ConteoService.asignar_conteo(db, conteo_data, current_user.IdUsuarios)
@@ -80,7 +80,7 @@ async def editar_conteo(
     """
     Editar un conteo existente (solo conteos pendientes Envio=0).
 
-    **Roles permitidos**: Admin (1), Coordinador de zona (2), Monitorista Soporte (33),
+    **Roles permitidos**: Admin (1), Coordinador de zona (2), Monitorista CCA (32),
     Admin CCTV (7), nivel 8. APP no puede editar.
     """
     return ConteoService.editar_conteo(db, conteo_id, conteo_data, current_user.IdUsuarios)
@@ -110,7 +110,7 @@ async def contestar_conteo(
     Contestar un conteo (actualizar existencias físicas).
 
     **Roles permitidos**: Admin (1), Coordinador de zona (2), APP (4), nivel 8.
-    Monitorista Soporte (33) y Admin CCTV (7) no pueden contestar.
+    Monitorista CCA (32) y Admin CCTV (7) no pueden contestar.
     """
     return ConteoService.contestar_conteo(db, conteo_id, conteo_data, current_user.IdUsuarios)
 
@@ -124,7 +124,7 @@ async def validar_conteo(
     """
     Validar un conteo: llenar existencias sistema y marcar como validado.
 
-    **Roles permitidos**: Admin (1), Monitorista Soporte (33), Admin CCTV (7), nivel 8.
+    **Roles permitidos**: Admin (1), Monitorista CCA (32), Admin CCTV (7), nivel 8.
     APP (4) y Coordinador de zona (2) no pueden validar.
     """
     return ConteoService.validar_conteo(db, conteo_id, conteo_data, current_user.IdUsuarios)

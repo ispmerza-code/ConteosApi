@@ -9,7 +9,7 @@ import { formatLocalDate } from '@/lib/dateUtils'
 import { useAuth } from '@/context/AuthContext'
 
 const NIVELES_CONTESTAR = new Set([1, 2, 4, 8])
-const NIVELES_VALIDAR = new Set([1, 33, 7, 8])
+const NIVELES_VALIDAR = new Set([1, 32, 7, 8])
 
 export default function VerConteo() {
   const router = useRouter()
