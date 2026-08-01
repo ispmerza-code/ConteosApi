@@ -1,0 +1,110 @@
+# Prompt Cursor — Conteos online → Gestión de sucursales (servidor local)
+
+> Archivo para **pegar / abrir en el repo de Conteos online** (`conteos-frontend` u equivalente).  
+> Objetivo: que la ruta `/apps` (Gestión APPs) **deje de renderizar la UI online** y **solo redirija** al módulo local.
+
+---
+
+## Contexto
+
+La gobernanza de asignaciones usuario↔sucursal (`usuariossucursal`) vive en el **servidor local SCISP**, no en Vercel/Aiven.
+
+**Auth:** Conteos online y el módulo local son **sistemas de autenticación distintos**.  
+Comparten las **mismas credenciales** (IdUsuarios + contraseña), pero **NO** se comparte ni se valida el JWT entre ambos.  
+El redirect **no debe pasar token**. El usuario inicia sesión otra vez en la página local con las mismas credenciales.
+
+**URL destino (local):**
+
+```
+http://10.57.0.98:8000/conteos/sucursales/app
+```
+
+La página local:
+- **No** está en el menú de SCISP (ruta aislada).
+- Login propio contra el API local (`/auth/login`).
+- Gestores: niveles 1, 2, 8, 32.
+- Gestiona solo usuarios activos **Coordinador de Zona** (2) y **App** (4).
+- Nivel 2 solo asigna sucursales que él tiene y solo a usuarios App (4).
+
+---
+
+## Tarea para el agente (copiar tal cual)
+
+```
+Necesito que Conteos online redirija la gestión de APPs al módulo local.
+
+Objetivo:
+- La ruta /apps (o el botón/link "Gestión APPs" del dashboard) NO debe seguir
+  mostrando el CRUD online.
+- Debe redirigir ÚNICAMENTE a:
+  http://10.57.0.98:8000/conteos/sucursales/app
+- NO pasar JWT, token, Authorization ni query ?token=.
+  Son sistemas de autenticación diferentes; no integrar ni comparar tokens.
+- El usuario hará login de nuevo en la página local con las MISMAS credenciales
+  (IdUsuarios + contraseña) que usa en Conteos.
+- Mientras carga el redirect, mostrar un spinner simple (gray-50 / blue-600).
+- Usar variable de entorno NEXT_PUBLIC_GESTION_APPS_URL con ese valor por defecto
+  si no está definida.
+- No modificar la estética del resto de Conteos.
+- No borrar lógica de login/dashboard; solo la entrada a /apps.
+- Comentario breve: gobernanza en servidor local; auth independiente.
+
+Implementación sugerida (Next.js App Router):
+
+1) Crear o reemplazar src/app/apps/page.tsx con un client component que solo redirija.
+2) En Vercel / .env:
+   NEXT_PUBLIC_GESTION_APPS_URL=http://10.57.0.98:8000/conteos/sucursales/app
+3) Si hay más enlaces a /apps, que sigan yendo a /apps (el redirect los atrapa).
+
+Ejemplo de página redirect (SIN token):
+
+'use client'
+import { useEffect } from 'react'
+
+const LOCAL_APPS_URL =
+  process.env.NEXT_PUBLIC_GESTION_APPS_URL ||
+  'http://10.57.0.98:8000/conteos/sucursales/app'
+
+export default function AppsRedirect() {
+  useEffect(() => {
+    // Auth distinta: no enviar JWT. Solo redirigir.
+    window.location.replace(LOCAL_APPS_URL)
+  }, [])
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+    </div>
+  )
+}
+
+Red:
+- El navegador debe alcanzar http://10.57.0.98:8000 (red interna / VPN).
+- El API local debe estar levantado.
+
+No implementes el CRUD de sucursales otra vez en online. Solo el redirect.
+No compartas JWT_SECRET ni intentes SSO por token.
+```
+
+---
+
+## Checklist de prueba
+
+- [ ] Login en Conteos online
+- [ ] Ir a Gestión APPs / `/apps`
+- [ ] Aterriza en `http://10.57.0.98:8000/conteos/sucursales/app` **sin** `?token=`
+- [ ] Aparece login local → entrar con mismas credenciales
+- [ ] Se listan solo activos Coordinador de Zona / App
+- [ ] Asignar sucursales por zona y guardar funciona contra BD local
+
+---
+
+## Nota
+
+URL a configurar en Vercel:
+
+```
+NEXT_PUBLIC_GESTION_APPS_URL=http://10.57.0.98:8000/conteos/sucursales/app
+```
+
+Si cambia el host del API local, actualizar solo esa variable (y este archivo).

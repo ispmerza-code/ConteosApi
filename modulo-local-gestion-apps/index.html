@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gestión de APPs</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; }
+  </style>
+</head>
+<body class="min-h-screen bg-gray-50">
+  <!--
+    Copia visual standalone de Conteos /apps
+    Configura abajo GESTION_APPS_CONFIG o usa ?token=&api=
+  -->
+  <div id="app"></div>
+
+  <script>
+    window.GESTION_APPS_CONFIG = window.GESTION_APPS_CONFIG || {
+      // URL base de la API LOCAL (gobernanza usuariossucursal)
+      apiBaseUrl: 'http://localhost:8000',
+      // Si true, exige permiso nivel 1/2/8 o IDs especiales
+      enforcePermisos: true,
+      // URL al volver (Conteos online dashboard)
+      backUrl: '',
+    };
+
+    const BADGE_COLORS = {
+      A: 'bg-blue-600', B: 'bg-teal-600', C: 'bg-indigo-600', D: 'bg-cyan-600',
+      E: 'bg-sky-600', F: 'bg-violet-600', G: 'bg-purple-600', H: 'bg-fuchsia-600',
+      M: 'bg-rose-600', N: 'bg-orange-600', P: 'bg-amber-600', T: 'bg-emerald-600',
+    };
+    const USERS_CON_ACCESO = new Set([52033, 61752]);
+    const puedeGestionar = (nivel, id) =>
+      nivel === 1 || nivel === 2 || nivel === 8 || USERS_CON_ACCESO.has(id);
+    const getBadgeColor = (id) => BADGE_COLORS[(id || '')[0]?.toUpperCase()] || 'bg-gray-600';
+    const ITEMS_PER_PAGE = 15;
+
+    const params = new URLSearchParams(location.search);
+    if (params.get('token')) localStorage.setItem('token', params.get('token'));
+    if (params.get('api')) window.GESTION_APPS_CONFIG.apiBaseUrl = params.get('api');
+
+    const cfg = window.GESTION_APPS_CONFIG;
+    const token = () => localStorage.getItem('token') || '';
+
+    async function api(path, opts = {}) {
+      const res = await fetch(cfg.apiBaseUrl.replace(/\/$/, '') + path, {
+        ...opts,
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token() ? { Authorization: 'Bearer ' + token() } : {}),
+          ...(opts.headers || {}),
+        },
+      });
+      if (res.status === 401) {
+        alert('Sesión inválida. Vuelve a entrar desde Conteos.');
+        throw new Error('401');
+      }
+      if (!res.ok) {
+        const t = await res.text();
+        throw new Error(t || res.statusText);
+      }
+      if (res.status === 204) return null;
+      return res.json();
+    }
+
+    const state = {
+      loading: true,
+      error: '',
+      errorDetail: '',
+      appUsers: [],
+      allSucursales: [],
+      allowedCentrosForManager: null,
+      searchUsers: '',
+      statusFilter: 'all',
+      currentPage: 1,
+      selectedUser: null,
+      assignedCentros: new Set(),
+      searchModal: '',
+      zonaFilter: '',
+      soloAsignadas: false,
+      saving: false,
+      saveSuccess: false,
+      loadingModal: false,
+      me: null,
+    };
+
+    function initials(name) {
+      return (name || '').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+    }
+
+    function filteredUsers() {
+      return state.appUsers
+        .filter(u =>
+          !state.searchUsers ||
+          u.NombreUsuario.toLowerCase().includes(state.searchUsers.toLowerCase()) ||
+          String(u.IdUsuarios).includes(state.searchUsers)
+        )
+        .filter(u =>
+          state.statusFilter === 'all' ||
+          (state.statusFilter === 'activo' ? u.Estatus === 1 : u.Estatus !== 1)
+        );
+    }
+
+    function filteredModalSucursales() {
+      return state.allSucursales
+        .filter(s => !state.allowedCentrosForManager || state.allowedCentrosForManager.has(s.IdCentro))
+        .filter(s => !state.zonaFilter || (s.Zona || 'Sin zona') === state.zonaFilter)
+        .filter(s =>
+          !state.searchModal ||
+          s.Sucursales.toLowerCase().includes(state.searchModal.toLowerCase()) ||
+          s.IdCentro.toLowerCase().includes(state.searchModal.toLowerCase())
+        )
+        .filter(s => !state.soloAsignadas || state.assignedCentros.has(s.IdCentro));
+    }
+
+    function sucursalesByZona(list) {
+      const map = {};
+      list.forEach(s => {
+        const z = s.Zona || 'Sin zona';
+        if (!map[z]) map[z] = [];
+        map[z].push(s);
+      });
+      return map;
+    }
+
+    function icon(name) {
+      const icons = {
+        search: '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z"/></svg>',
+        pin: '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.828 0l-4.243-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>',
+        user: '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>',
+        check: '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>',
+        x: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>',
+        back: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>',
+        alert: '<svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M12 5a7 7 0 100 14 7 7 0 000-14z"/></svg>',
+      };
+      return icons[name] || '';
+    }
+
+    async function loadData() {
+      state.loading = true;
+      state.error = '';
+      render();
+      try {
+        try {
+          state.me = await api('/api/v1/auth/me');
+          if (cfg.enforcePermisos && !puedeGestionar(state.me.NivelUsuario, state.me.IdUsuarios)) {
+            state.error = 'No tienes permiso para gestionar asignaciones de APP';
+            state.loading = false;
+            render();
+            return;
+          }
+        } catch (_) { /* API sin /me: continuar si hay token */ }
+
+        const [users, sucursales] = await Promise.all([
+          api('/api/v1/auth/apps'),
+          api('/api/v1/conteos/sucursales'),
+        ]);
+        state.appUsers = users || [];
+        state.allSucursales = sucursales || [];
+
+        if (state.me && state.me.NivelUsuario === 2) {
+          try {
+            const asignadas = await api(`/api/v1/auth/apps/${state.me.IdUsuarios}/sucursales`);
+            state.allowedCentrosForManager = new Set((asignadas || []).map(s => s.IdCentro));
+          } catch {
+            state.allowedCentrosForManager = new Set();
+          }
+        } else {
+          state.allowedCentrosForManager = null;
+        }
+      } catch (e) {
+        state.error = 'Error al cargar los datos';
+        state.errorDetail = String(e.message || e);
+      } finally {
+        state.loading = false;
+        render();
+      }
+    }
+
+    async function openModal(u) {
+      state.selectedUser = u;
+      state.searchModal = '';
+      state.zonaFilter = '';
+      state.soloAsignadas = false;
+      state.saveSuccess = false;
+      state.loadingModal = true;
+      render();
+      try {
+        const asignadas = await api(`/api/v1/auth/apps/${u.IdUsuarios}/sucursales`);
+        state.assignedCentros = new Set((asignadas || []).map(s => s.IdCentro));
+      } catch {
+        state.assignedCentros = new Set();
+      } finally {
+        state.loadingModal = false;
+        render();
+      }
+    }
+
+    async function handleSave() {
+      if (!state.selectedUser) return;
+      state.saving = true;
+      render();
+      try {
+        await api(`/api/v1/auth/apps/${state.selectedUser.IdUsuarios}/sucursales`, {
+          method: 'PUT',
+          body: JSON.stringify([...state.assignedCentros]),
+        });
+        state.appUsers = state.appUsers.map(u =>
+          u.IdUsuarios === state.selectedUser.IdUsuarios
+            ? { ...u, sucursales_count: state.assignedCentros.size }
+            : u
+        );
+        state.saveSuccess = true;
+        render();
+        setTimeout(() => {
+          state.selectedUser = null;
+          state.assignedCentros = new Set();
+          render();
+        }, 1000);
+      } catch (e) {
+        alert('No se pudo guardar: ' + (e.message || e));
+      } finally {
+        state.saving = false;
+        render();
+      }
+    }
+
+    function goBack() {
+      if (cfg.backUrl) location.href = cfg.backUrl;
+      else if (document.referrer) history.back();
+      else location.href = '/dashboard';
+    }
+
+    function render() {
+      const root = document.getElementById('app');
+      if (state.loading) {
+        root.innerHTML = `<div class="min-h-screen flex items-center justify-center bg-gray-50"><div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div></div>`;
+        return;
+      }
+      if (state.error) {
+        root.innerHTML = `
+          <div class="min-h-screen flex items-center justify-center bg-gray-50">
+            <div class="text-center">
+              <div class="text-red-500 mx-auto mb-3 flex justify-center">${icon('alert')}</div>
+              <p class="text-gray-700">${state.error}</p>
+              ${state.errorDetail ? `<p class="text-xs text-gray-500 mt-1 font-mono bg-gray-100 rounded px-3 py-2 max-w-sm mx-auto break-all">${state.errorDetail}</p>` : ''}
+              <button onclick="loadData()" class="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm">Reintentar</button>
+            </div>
+          </div>`;
+        return;
+      }
+
+      const users = filteredUsers();
+      const totalPages = Math.max(1, Math.ceil(users.length / ITEMS_PER_PAGE));
+      if (state.currentPage > totalPages) state.currentPage = totalPages;
+      const currentUsers = users.slice((state.currentPage - 1) * ITEMS_PER_PAGE, state.currentPage * ITEMS_PER_PAGE);
+      const modalList = filteredModalSucursales();
+      const byZona = sucursalesByZona(modalList);
+      const zonas = [...new Set(state.allSucursales.map(s => s.Zona || 'Sin zona'))].sort();
+      const disponibles = state.allowedCentrosForManager
+        ? state.allSucursales.filter(s => state.allowedCentrosForManager.has(s.IdCentro)).length
+        : state.allSucursales.length;
+
+      root.innerHTML = `
+      <div class="min-h-screen bg-gray-50">
+        <header class="bg-white shadow-sm sticky top-0 z-10">
+          <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between py-5">
+              <div class="flex items-center gap-4">
+                <button onclick="goBack()" class="p-2 rounded-lg hover:bg-gray-100 transition-colors">${icon('back')}</button>
+                <div>
+                  <h1 class="text-2xl font-bold text-gray-900">Gestión de APPs</h1>
+                  <p class="text-sm text-gray-500">Asignar sucursales a usuarios de la aplicación móvil</p>
+                </div>
+              </div>
+              <span class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-sm font-medium">
+                ${icon('user')} ${users.length} usuarios APP
+              </span>
+            </div>
+          </div>
+        </header>
+
+        <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div class="bg-white rounded-xl shadow-sm p-4 mb-6 flex flex-wrap gap-3 items-center">
+            <div class="relative flex-1 min-w-[200px]">
+              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">${icon('search')}</span>
+              <input id="searchUsers" type="text" placeholder="Buscar monitoristas..." value="${state.searchUsers.replace(/"/g, '&quot;')}"
+                class="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+            <select id="statusFilter" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="all" ${state.statusFilter==='all'?'selected':''}>Todos los estados</option>
+              <option value="activo" ${state.statusFilter==='activo'?'selected':''}>Activos</option>
+              <option value="inactivo" ${state.statusFilter==='inactivo'?'selected':''}>Inactivos</option>
+            </select>
+            <button id="clearFilters" class="px-4 py-2 text-sm border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors">Limpiar Filtros</button>
+          </div>
+
+          <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+              <h2 class="text-base font-semibold text-gray-900">Monitoristas (${users.length})</h2>
+              ${users.length ? `<span class="text-sm text-gray-500">Mostrando ${(state.currentPage-1)*ITEMS_PER_PAGE+1}-${Math.min(state.currentPage*ITEMS_PER_PAGE, users.length)} de ${users.length}</span>` : ''}
+            </div>
+
+            ${users.length === 0 ? `
+              <div class="py-16 text-center text-gray-500">
+                <p>No se encontraron usuarios APP</p>
+              </div>` : `
+              <div class="hidden md:block overflow-x-auto">
+                <table class="w-full">
+                  <thead class="bg-gray-50">
+                    <tr>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre</th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sucursales</th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-gray-100">
+                    ${currentUsers.map(u => `
+                      <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 text-sm font-medium text-gray-900">${u.IdUsuarios}</td>
+                        <td class="px-6 py-4">
+                          <div class="flex items-center gap-3">
+                            <div class="w-9 h-9 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white text-sm font-bold shrink-0">${initials(u.NombreUsuario)}</div>
+                            <span class="text-sm font-medium text-gray-900">${u.NombreUsuario}</span>
+                          </div>
+                        </td>
+                        <td class="px-6 py-4">
+                          <span class="inline-flex px-2.5 py-1 text-xs font-semibold rounded-full ${u.Estatus===1?'bg-green-100 text-green-700':'bg-red-100 text-red-700'}">${u.Estatus===1?'Activo':'Inactivo'}</span>
+                        </td>
+                        <td class="px-6 py-4">
+                          <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 text-sm font-medium">${icon('pin')} ${u.sucursales_count ?? 0}</span>
+                        </td>
+                        <td class="px-6 py-4">
+                          <button data-open="${u.IdUsuarios}" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg border border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors">${icon('pin')} Sucursales</button>
+                        </td>
+                      </tr>`).join('')}
+                  </tbody>
+                </table>
+              </div>
+              <div class="md:hidden divide-y divide-gray-100">
+                ${currentUsers.map(u => `
+                  <div class="p-4 flex items-center justify-between gap-3">
+                    <div class="flex items-center gap-3 min-w-0">
+                      <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white text-sm font-bold shrink-0">${initials(u.NombreUsuario)}</div>
+                      <div class="min-w-0">
+                        <p class="text-sm font-medium text-gray-900 truncate">${u.NombreUsuario}</p>
+                        <div class="flex items-center gap-2 mt-1 flex-wrap">
+                          <span class="text-xs text-gray-500">#${u.IdUsuarios}</span>
+                          <span class="inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${u.Estatus===1?'bg-green-100 text-green-700':'bg-red-100 text-red-700'}">${u.Estatus===1?'Activo':'Inactivo'}</span>
+                          <span class="inline-flex items-center gap-1 text-xs text-blue-700">${icon('pin')} ${u.sucursales_count ?? 0}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <button data-open="${u.IdUsuarios}" class="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100">${icon('pin')} Sucursales</button>
+                  </div>`).join('')}
+              </div>
+              ${totalPages > 1 ? `
+              <div class="px-6 py-4 border-t border-gray-100 flex items-center justify-between">
+                <button id="prevPage" ${state.currentPage===1?'disabled':''} class="inline-flex items-center gap-1 px-3 py-1.5 text-sm border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 disabled:opacity-40">Anterior</button>
+                <span class="text-sm text-gray-600">Página ${state.currentPage} de ${totalPages}</span>
+                <button id="nextPage" ${state.currentPage===totalPages?'disabled':''} class="inline-flex items-center gap-1 px-3 py-1.5 text-sm border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 disabled:opacity-40">Siguiente</button>
+              </div>` : ''}
+            `}
+          </div>
+        </main>
+
+        ${state.selectedUser ? `
+        <div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-3 sm:p-6">
+          <div class="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[92vh] flex flex-col">
+            <div class="bg-blue-600 rounded-t-2xl px-4 py-4 flex flex-wrap items-center gap-3">
+              <div class="text-white">${icon('pin')}</div>
+              <div class="flex-1 min-w-0">
+                <h3 class="text-lg font-bold text-white">Asignar Sucursales</h3>
+                <p class="text-sm text-blue-100 truncate">Usuario: ${state.selectedUser.NombreUsuario} • ID: ${state.selectedUser.IdUsuarios}</p>
+              </div>
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-500 text-white text-sm font-medium">${icon('check')} Seleccionadas: ${state.assignedCentros.size}</span>
+                <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-500 text-white text-sm font-medium">${icon('pin')} Disponibles: ${disponibles}</span>
+                <button id="toggleAll" class="px-3 py-1.5 rounded-full bg-white text-blue-700 text-sm font-medium hover:bg-blue-50">${state.assignedCentros.size === disponibles ? 'Quitar Todas' : 'Seleccionar Todas'}</button>
+                <button id="closeModal" class="p-1.5 rounded-full hover:bg-blue-500 text-white">${icon('x')}</button>
+              </div>
+            </div>
+
+            <div class="px-4 py-3 border-b border-gray-100 flex flex-wrap gap-3 items-center">
+              <div class="relative flex-1 min-w-[180px]">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">${icon('search')}</span>
+                <input id="searchModal" type="text" placeholder="Buscar por nombre o código..." value="${state.searchModal.replace(/"/g,'&quot;')}"
+                  class="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <select id="zonaFilter" class="border border-gray-200 rounded-lg px-3 py-2 text-sm min-w-[170px]">
+                <option value="">Todas las zonas</option>
+                ${zonas.map(z => `<option value="${z}" ${state.zonaFilter===z?'selected':''}>${z}</option>`).join('')}
+              </select>
+              <label class="flex items-center gap-2 text-sm cursor-pointer border border-gray-200 rounded-lg px-3 py-2 hover:bg-gray-50 select-none">
+                <input id="soloAsignadas" type="checkbox" ${state.soloAsignadas?'checked':''} class="rounded text-blue-600" />
+                <span>Solo asignadas</span>
+              </label>
+            </div>
+
+            <div class="flex-1 overflow-y-auto px-4 py-4">
+              ${state.loadingModal ? `<div class="flex items-center justify-center py-16"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div></div>` :
+                Object.keys(byZona).length === 0 ? `<div class="py-12 text-center text-gray-500"><p class="text-sm">No hay sucursales que coincidan con los filtros</p></div>` :
+                Object.entries(byZona).sort(([a],[b]) => a.localeCompare(b)).map(([zona, sucsList]) => `
+                  <div class="mb-6">
+                    <div class="flex items-center gap-2 mb-3 pb-1 border-b border-gray-100">
+                      <span class="text-blue-600">${icon('pin')}</span>
+                      <h4 class="font-semibold text-gray-800">${zona}</h4>
+                      <span class="text-xs text-gray-400">(${sucsList.length} sucursales)</span>
+                      <button data-zona="${zona}" class="ml-auto text-xs text-blue-600 hover:underline zona-toggle">
+                        ${sucsList.every(s => state.assignedCentros.has(s.IdCentro)) ? 'Quitar zona' : 'Agregar zona'}
+                      </button>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5">
+                      ${sucsList.map(s => {
+                        const checked = state.assignedCentros.has(s.IdCentro);
+                        return `<label class="flex items-center gap-2.5 px-3 py-2 rounded-lg cursor-pointer transition-colors select-none ${checked?'bg-blue-50 border border-blue-200':'hover:bg-gray-50 border border-transparent'}">
+                          <input type="checkbox" data-centro="${s.IdCentro}" ${checked?'checked':''} class="rounded text-blue-600 shrink-0 centro-cb" />
+                          <span class="px-1.5 py-0.5 text-xs font-bold text-white rounded shrink-0 ${getBadgeColor(s.IdCentro)}">${s.IdCentro}</span>
+                          <span class="text-sm text-gray-700 truncate flex-1">${s.Sucursales}</span>
+                          ${checked ? `<span class="text-green-500">${icon('check')}</span>` : ''}
+                        </label>`;
+                      }).join('')}
+                    </div>
+                  </div>`).join('')
+              }
+            </div>
+
+            <div class="px-4 py-3 border-t border-gray-100 flex items-center justify-between gap-3">
+              <span class="text-sm text-gray-500">${modalList.length} sucursal(es) mostradas</span>
+              <div class="flex gap-3">
+                <button id="cancelModal" class="px-4 py-2 text-sm font-medium border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50">Cancelar</button>
+                <button id="saveModal" ${state.saving?'disabled':''} class="px-4 py-2 text-sm font-medium rounded-lg flex items-center gap-2 ${state.saveSuccess?'bg-green-600 text-white':'bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50'}">
+                  ${icon('check')} ${state.saving?'Guardando...':state.saveSuccess?'¡Guardado!':'Guardar Asignaciones'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>` : ''}
+      </div>`;
+
+      // Bind events
+      const su = document.getElementById('searchUsers');
+      if (su) su.oninput = (e) => { state.searchUsers = e.target.value; state.currentPage = 1; render(); };
+      const sf = document.getElementById('statusFilter');
+      if (sf) sf.onchange = (e) => { state.statusFilter = e.target.value; state.currentPage = 1; render(); };
+      const cf = document.getElementById('clearFilters');
+      if (cf) cf.onclick = () => { state.searchUsers = ''; state.statusFilter = 'all'; state.currentPage = 1; render(); };
+      document.querySelectorAll('[data-open]').forEach(btn => {
+        btn.onclick = () => {
+          const id = Number(btn.getAttribute('data-open'));
+          const u = state.appUsers.find(x => x.IdUsuarios === id);
+          if (u) openModal(u);
+        };
+      });
+      const prev = document.getElementById('prevPage');
+      if (prev) prev.onclick = () => { state.currentPage--; render(); };
+      const next = document.getElementById('nextPage');
+      if (next) next.onclick = () => { state.currentPage++; render(); };
+
+      if (state.selectedUser) {
+        document.getElementById('closeModal').onclick = () => { state.selectedUser = null; render(); };
+        document.getElementById('cancelModal').onclick = () => { state.selectedUser = null; render(); };
+        document.getElementById('saveModal').onclick = handleSave;
+        document.getElementById('searchModal').oninput = (e) => { state.searchModal = e.target.value; render(); };
+        document.getElementById('zonaFilter').onchange = (e) => { state.zonaFilter = e.target.value; render(); };
+        document.getElementById('soloAsignadas').onchange = (e) => { state.soloAsignadas = e.target.checked; render(); };
+        document.getElementById('toggleAll').onclick = () => {
+          const pool = state.allSucursales
+            .filter(s => !state.allowedCentrosForManager || state.allowedCentrosForManager.has(s.IdCentro))
+            .map(s => s.IdCentro);
+          if (state.assignedCentros.size === pool.length) state.assignedCentros = new Set();
+          else state.assignedCentros = new Set(pool);
+          render();
+        };
+        document.querySelectorAll('.centro-cb').forEach(cb => {
+          cb.onchange = (e) => {
+            const id = cb.getAttribute('data-centro');
+            const next = new Set(state.assignedCentros);
+            e.target.checked ? next.add(id) : next.delete(id);
+            state.assignedCentros = next;
+            render();
+          };
+        });
+        document.querySelectorAll('.zona-toggle').forEach(btn => {
+          btn.onclick = () => {
+            const zona = btn.getAttribute('data-zona');
+            const sucs = (sucursalesByZona(filteredModalSucursales())[zona] || []);
+            const next = new Set(state.assignedCentros);
+            const allIn = sucs.every(s => next.has(s.IdCentro));
+            sucs.forEach(s => allIn ? next.delete(s.IdCentro) : next.add(s.IdCentro));
+            state.assignedCentros = next;
+            render();
+          };
+        });
+      }
+    }
+
+    window.loadData = loadData;
+    window.goBack = goBack;
+    loadData();
+  </script>
+</body>
+</html>
