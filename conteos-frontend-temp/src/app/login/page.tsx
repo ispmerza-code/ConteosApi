@@ -122,11 +122,7 @@ export default function LoginPage() {
             </button>
           </div>
 
-          <div className="text-center">
-            <p className="text-xs text-gray-500">
-              Ejemplo: Usuario: 47579, Contraseña: tu_contraseña
-            </p>
-          </div>
+
         </form>
       </div>
     </div>
