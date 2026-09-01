@@ -486,8 +486,9 @@ export default function EstadisticasPage() {
 
       if (isNivel4 && authSucursal) {
         setSelectedSucursal(authSucursal.IdCentro)
-      } else if (!selectedSucursal && sucursalesList.length > 0) {
-        setSelectedSucursal(sucursalesList[0].IdCentro)
+      } else if (!selectedSucursal) {
+        const firstT = sucursalesList.find((s) => s.IdCentro.toUpperCase().startsWith('T'))
+        if (firstT) setSelectedSucursal(firstT.IdCentro)
       }
 
       if (!selectedZona && allZones.length > 0) {
@@ -709,7 +710,7 @@ export default function EstadisticasPage() {
                     onChange={(event) => setSelectedSucursal(event.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                   >
-                    {sucursales.map((sucursal) => (
+                    {sucursales.filter((s) => s.IdCentro.toUpperCase().startsWith('T')).map((sucursal) => (
                       <option key={sucursal.IdCentro} value={sucursal.IdCentro}>
                         {sucursal.IdCentro} - {sucursal.Sucursales}
                       </option>
