@@ -193,8 +193,8 @@ function CategoryRankingTable({
   const selectedProducts = selectedCategory ? detailsByCategory[selectedCategory] || [] : []
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-      <div className={`px-5 py-4 border-b ${type === 'faltante' ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'}`}>
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+      <div className={`px-5 py-4 border-b rounded-t-xl ${type === 'faltante' ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'}`}>
         <h3 className={`text-base font-semibold flex items-center gap-2 ${type === 'faltante' ? 'text-red-800' : 'text-green-800'}`}>
           {type === 'faltante' ? <FiTrendingDown className="w-4 h-4" /> : <FiTrendingUp className="w-4 h-4" />}
           {title}
@@ -202,47 +202,45 @@ function CategoryRankingTable({
         <p className="text-xs mt-1 text-gray-600">Haz clic en una categoría para ver su detalle de productos.</p>
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[620px] divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-4 py-3 min-w-[70px] whitespace-nowrap text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
-              <th className="px-4 py-3 min-w-[300px] whitespace-nowrap text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Categoría</th>
-              <th className="px-4 py-3 min-w-[150px] whitespace-nowrap text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                {type === 'faltante' ? 'Faltante' : 'Sobrante'}
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {rows.length > 0 ? (
-              rows.map((row, index) => (
-                <tr key={`${row.categoria}-${index}`} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">{index + 1}</td>
-                  <td className="px-4 py-3 text-sm text-gray-900">
-                    <button
-                      type="button"
-                      onClick={() => setSelectedCategory(selectedCategory === row.categoria ? '' : row.categoria)}
-                      className="text-left hover:underline text-blue-700"
-                    >
-                      {row.categoria}
-                    </button>
-                  </td>
-                  <td className={`px-4 py-3 whitespace-nowrap text-sm text-right ${type === 'faltante' ? 'text-red-600' : 'text-green-600'}`}>
-                    <div className="font-semibold">{row.diferencia.toFixed(2)}</div>
-                    <div className="text-xs text-gray-600 mt-1">{(row.monto || 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })}</div>
-                  </td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan={3} className="px-4 py-8 text-center text-sm text-gray-500">
-                  {emptyMessage}
+      <table className="w-full divide-y divide-gray-200">
+        <thead className="bg-gray-50">
+          <tr>
+            <th className="px-3 py-3 w-8 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
+            <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Categoría</th>
+            <th className="px-3 py-3 w-36 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+              {type === 'faltante' ? 'Faltante' : 'Sobrante'}
+            </th>
+          </tr>
+        </thead>
+        <tbody className="bg-white divide-y divide-gray-200">
+          {rows.length > 0 ? (
+            rows.map((row, index) => (
+              <tr key={`${row.categoria}-${index}`} className="hover:bg-gray-50">
+                <td className="px-3 py-3 whitespace-nowrap text-sm font-medium text-gray-900">{index + 1}</td>
+                <td className="px-3 py-3 text-sm text-gray-900">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedCategory(selectedCategory === row.categoria ? '' : row.categoria)}
+                    className="text-left hover:underline text-blue-700 leading-snug"
+                  >
+                    {row.categoria}
+                  </button>
+                </td>
+                <td className={`px-3 py-3 text-sm text-right ${type === 'faltante' ? 'text-red-600' : 'text-green-600'}`}>
+                  <div className="font-semibold whitespace-nowrap">{Number.isInteger(row.diferencia) ? row.diferencia.toLocaleString('es-MX') : row.diferencia.toFixed(2)}</div>
+                  <div className="text-xs text-gray-500 mt-0.5 whitespace-nowrap">{(row.monto || 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })}</div>
                 </td>
               </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+            ))
+          ) : (
+            <tr>
+              <td colSpan={3} className="px-4 py-8 text-center text-sm text-gray-500">
+                {emptyMessage}
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
 
       {selectedCategory && (
         <div className="border-t border-gray-200 p-4 bg-gray-50">
@@ -250,28 +248,28 @@ function CategoryRankingTable({
             Detalle de productos en categoría: {selectedCategory}
           </h4>
 
-          <div className="overflow-x-auto bg-white border border-gray-200 rounded-lg">
-            <table className="w-full min-w-[620px] divide-y divide-gray-200">
+          <div className="bg-white border border-gray-200 rounded-lg">
+            <table className="w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Código</th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Producto</th>
-                  <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Cantidad</th>
-                  <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Monto</th>
+                  <th className="px-3 py-2 w-8 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
+                  <th className="hidden sm:table-cell px-3 py-2 w-28 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Código</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Producto</th>
+                  <th className="px-3 py-2 w-20 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Cant.</th>
+                  <th className="px-3 py-2 w-28 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Monto</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {selectedProducts.length > 0 ? (
                   selectedProducts.map((product, index) => (
                     <tr key={`${product.CodigoBarras}-${index}`} className="hover:bg-gray-50">
-                      <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">{index + 1}</td>
-                      <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">{product.CodigoBarras}</td>
-                      <td className="px-4 py-2 text-sm text-gray-900">{product.Producto}</td>
-                      <td className={`px-4 py-2 whitespace-nowrap text-sm text-right font-semibold ${type === 'faltante' ? 'text-red-600' : 'text-green-600'}`}>
-                        {product.diferencia.toFixed(2)}
+                      <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-700">{index + 1}</td>
+                      <td className="hidden sm:table-cell px-3 py-2 whitespace-nowrap text-sm text-gray-500">{product.CodigoBarras}</td>
+                      <td className="px-3 py-2 text-sm text-gray-900 leading-snug">{product.Producto}</td>
+                      <td className={`px-3 py-2 whitespace-nowrap text-sm text-right font-semibold ${type === 'faltante' ? 'text-red-600' : 'text-green-600'}`}>
+                        {Number.isInteger(product.diferencia) ? product.diferencia.toLocaleString('es-MX') : product.diferencia.toFixed(2)}
                       </td>
-                      <td className={`px-4 py-2 whitespace-nowrap text-sm text-right font-semibold ${type === 'faltante' ? 'text-red-600' : 'text-green-600'}`}>
+                      <td className={`px-3 py-2 whitespace-nowrap text-sm text-right font-semibold ${type === 'faltante' ? 'text-red-600' : 'text-green-600'}`}>
                         {(product.monto || 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })}
                       </td>
                     </tr>
@@ -304,47 +302,45 @@ function ProductListTable({
   emptyMessage: string
 }) {
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-      <div className={`px-5 py-4 border-b ${type === 'faltante' ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'}`}>
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+      <div className={`px-5 py-4 border-b rounded-t-xl ${type === 'faltante' ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'}`}>
         <h3 className={`text-base font-semibold flex items-center gap-2 ${type === 'faltante' ? 'text-red-800' : 'text-green-800'}`}>
           {type === 'faltante' ? <FiTrendingDown className="w-4 h-4" /> : <FiTrendingUp className="w-4 h-4" />}
           {title}
         </h3>
       </div>
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[500px] divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Código</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Producto</th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Cantidad</th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Monto</th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {rows.length > 0 ? (
-              rows.map((row, i) => (
-                <tr key={row.CodigoBarras} className="hover:bg-gray-50">
-                  <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">{i + 1}</td>
-                  <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">{row.CodigoBarras}</td>
-                  <td className="px-4 py-2 text-sm text-gray-900">{row.Producto}</td>
-                  <td className={`px-4 py-2 whitespace-nowrap text-sm text-right font-semibold ${type === 'faltante' ? 'text-red-600' : 'text-green-600'}`}>
-                    {row.diferencia.toFixed(2)}
-                  </td>
-                  <td className={`px-4 py-2 whitespace-nowrap text-sm text-right font-semibold ${type === 'faltante' ? 'text-red-600' : 'text-green-600'}`}>
-                    {(row.monto || 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })}
-                  </td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-500">{emptyMessage}</td>
+      <table className="w-full divide-y divide-gray-200">
+        <thead className="bg-gray-50">
+          <tr>
+            <th className="px-3 py-3 w-8 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
+            <th className="hidden sm:table-cell px-3 py-3 w-28 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Código</th>
+            <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Producto</th>
+            <th className="px-3 py-3 w-20 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Cant.</th>
+            <th className="px-3 py-3 w-28 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Monto</th>
+          </tr>
+        </thead>
+        <tbody className="bg-white divide-y divide-gray-200">
+          {rows.length > 0 ? (
+            rows.map((row, i) => (
+              <tr key={row.CodigoBarras} className="hover:bg-gray-50">
+                <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-700">{i + 1}</td>
+                <td className="hidden sm:table-cell px-3 py-2 whitespace-nowrap text-sm text-gray-500">{row.CodigoBarras}</td>
+                <td className="px-3 py-2 text-sm text-gray-900 leading-snug">{row.Producto}</td>
+                <td className={`px-3 py-2 whitespace-nowrap text-sm text-right font-semibold ${type === 'faltante' ? 'text-red-600' : 'text-green-600'}`}>
+                  {Number.isInteger(row.diferencia) ? row.diferencia.toLocaleString('es-MX') : row.diferencia.toFixed(2)}
+                </td>
+                <td className={`px-3 py-2 whitespace-nowrap text-sm text-right font-semibold ${type === 'faltante' ? 'text-red-600' : 'text-green-600'}`}>
+                  {(row.monto || 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })}
+                </td>
               </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+            ))
+          ) : (
+            <tr>
+              <td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-500">{emptyMessage}</td>
+            </tr>
+          )}
+        </tbody>
+      </table>
     </div>
   )
 }
