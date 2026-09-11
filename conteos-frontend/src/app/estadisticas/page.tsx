@@ -48,6 +48,16 @@ interface GroupStats {
   detallesSobrantes: Record<string, ProductAggregate[]>
 }
 
+interface ZonaConteoRanking {
+  zona: string
+  conteos: number
+  sucursales: Array<{
+    idCentro: string
+    sucursal: string
+    conteos: number
+  }>
+}
+
 interface CatalogProduct {
   CodigoBarras: string
   Categoria?: string
@@ -369,6 +379,8 @@ export default function EstadisticasPage() {
   const [selectedZona, setSelectedZona] = useState('')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
+  const [showConteosZonaRanking, setShowConteosZonaRanking] = useState(false)
+  const [conteosPorZonaRanking, setConteosPorZonaRanking] = useState<ZonaConteoRanking[]>([])
 
   const recalculateStatistics = (
     conteosInput: ConteoResponse[],
@@ -394,14 +406,32 @@ export default function EstadisticasPage() {
     const globalByCategory: Record<string, Record<string, ProductAggregate>> = {}
     const bySucursalByCategory: Record<string, Record<string, Record<string, ProductAggregate>>> = {}
     const byZonaByCategory: Record<string, Record<string, Record<string, ProductAggregate>>> = {}
+    const conteosPorZona = new Map<string, { zona: string; sucursales: Map<string, { idCentro: string; sucursal: string; conteos: number }>; total: number }>()
 
     for (const conteo of conteosFiltrados) {
       const sucursalId = conteo.IdCentro
       const sucursalInfo = sucursalMap[sucursalId]
       const zonaLabel = sucursalInfo?.Zona?.trim() || (sucursalInfo?.IdZona ? `Zona ${sucursalInfo.IdZona}` : 'Sin zona')
+      const sucursalLabel = sucursalInfo?.Sucursales || sucursalId
 
       if (!bySucursalByCategory[sucursalId]) bySucursalByCategory[sucursalId] = {}
       if (!byZonaByCategory[zonaLabel]) byZonaByCategory[zonaLabel] = {}
+
+      const zonaEntry = conteosPorZona.get(zonaLabel) || {
+        zona: zonaLabel,
+        sucursales: new Map<string, { idCentro: string; sucursal: string; conteos: number }>(),
+        total: 0,
+      }
+
+      const sucursalEntry = zonaEntry.sucursales.get(sucursalId) || {
+        idCentro: sucursalId,
+        sucursal: sucursalLabel,
+        conteos: 0,
+      }
+      sucursalEntry.conteos += 1
+      zonaEntry.sucursales.set(sucursalId, sucursalEntry)
+      zonaEntry.total += 1
+      conteosPorZona.set(zonaLabel, zonaEntry)
 
       for (const detalle of conteo.detalles || []) {
         const diferencia = Number(detalle.NExcistencia) - Number(detalle.NSistema)
@@ -417,6 +447,21 @@ export default function EstadisticasPage() {
       }
     }
 
+    const rankingPorZona: ZonaConteoRanking[] = Array.from(conteosPorZona.values())
+      .map((zonaData) => ({
+        zona: zonaData.zona,
+        conteos: zonaData.total,
+        sucursales: Array.from(zonaData.sucursales.values())
+          .sort((a, b) => b.conteos - a.conteos)
+          .map((item) => ({
+            idCentro: item.idCentro,
+            sucursal: item.sucursal,
+            conteos: item.conteos,
+          })),
+      }))
+      .sort((a, b) => b.conteos - a.conteos)
+
+    setConteosPorZonaRanking(rankingPorZona)
     setGlobalStats(buildGroupStats(globalByCategory))
 
     const groupedSucursalStats = Object.fromEntries(
@@ -626,10 +671,19 @@ export default function EstadisticasPage() {
         {hasRange ? (
           <>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+              <button
+                type="button"
+                onClick={() => setShowConteosZonaRanking((current) => !current)}
+                className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 text-left hover:border-blue-300 hover:shadow-md transition-all"
+              >
                 <p className="text-sm text-gray-600">Conteos analizados</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">{conteosAnalizados}</p>
-              </div>
+                <div className="mt-1 flex items-center justify-between gap-3">
+                  <span className="text-2xl font-bold text-gray-900">{conteosAnalizados}</span>
+                  <span className="text-xs font-medium text-blue-700 bg-blue-50 px-2 py-1 rounded-full">
+                    {showConteosZonaRanking ? 'Ocultar' : 'Ver ranking'}
+                  </span>
+                </div>
+              </button>
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
                 <p className="text-sm text-gray-600">Categorías faltantes</p>
                 <p className="text-2xl font-bold text-red-600 mt-1">{globalStats.faltantes.length}</p>
@@ -656,6 +710,43 @@ export default function EstadisticasPage() {
                 </p>
               </div>
             </div>
+
+            {showConteosZonaRanking && (
+              <div className="mb-6 bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+                <div className="flex items-center justify-between gap-3 mb-4">
+                  <h2 className="text-lg font-semibold text-gray-900">Conteos por zona y sucursal</h2>
+                  <span className="text-xs font-medium text-gray-500">Ordenado de mayor a menor</span>
+                </div>
+
+                {conteosPorZonaRanking.length > 0 ? (
+                  <div className="space-y-4">
+                    {conteosPorZonaRanking.map((zonaData, zonaIndex) => (
+                      <div key={`${zonaData.zona}-${zonaIndex}`} className="border border-gray-200 rounded-lg overflow-hidden">
+                        <div className="bg-slate-50 px-4 py-3 border-b border-slate-200 flex items-center justify-between gap-3">
+                          <span className="font-semibold text-gray-900">{zonaData.zona}</span>
+                          <span className="text-sm font-semibold text-slate-700">{zonaData.conteos} conteos</span>
+                        </div>
+                        <div className="divide-y divide-gray-200">
+                          {zonaData.sucursales.map((sucursal, index) => (
+                            <div key={`${zonaData.zona}-${sucursal.idCentro}`} className="flex items-center justify-between px-4 py-3 text-sm">
+                              <div className="flex items-center gap-3">
+                                <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-gray-100 text-gray-700 text-xs font-semibold">
+                                  {index + 1}
+                                </span>
+                                <span className="text-gray-800">{sucursal.sucursal}</span>
+                              </div>
+                              <span className="font-semibold text-gray-900">{sucursal.conteos}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500">No hay conteos para mostrar con el rango seleccionado.</p>
+                )}
+              </div>
+            )}
 
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-8">
               {isNivel4 ? (
