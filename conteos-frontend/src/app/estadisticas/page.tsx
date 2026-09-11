@@ -555,6 +555,8 @@ export default function EstadisticasPage() {
     ? `${selectedSucursalData.IdCentro} - ${selectedSucursalData.Sucursales}`
     : selectedSucursal
 
+  const maxConteosPorZona = Math.max(...conteosPorZonaRanking.map((zona) => zona.conteos), 1)
+
   // Para nivel 4: lista plana de productos (sin agrupación por categoría)
   const allProductsFaltantes: ProductAggregate[] = Object.values(globalStats.detallesFaltantes)
     .flat()
@@ -719,28 +721,75 @@ export default function EstadisticasPage() {
                 </div>
 
                 {conteosPorZonaRanking.length > 0 ? (
-                  <div className="space-y-4">
-                    {conteosPorZonaRanking.map((zonaData, zonaIndex) => (
-                      <div key={`${zonaData.zona}-${zonaIndex}`} className="border border-gray-200 rounded-lg overflow-hidden">
-                        <div className="bg-slate-50 px-4 py-3 border-b border-slate-200 flex items-center justify-between gap-3">
-                          <span className="font-semibold text-gray-900">{zonaData.zona}</span>
-                          <span className="text-sm font-semibold text-slate-700">{zonaData.conteos} conteos</span>
-                        </div>
-                        <div className="divide-y divide-gray-200">
-                          {zonaData.sucursales.map((sucursal, index) => (
-                            <div key={`${zonaData.zona}-${sucursal.idCentro}`} className="flex items-center justify-between px-4 py-3 text-sm">
-                              <div className="flex items-center gap-3">
-                                <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-gray-100 text-gray-700 text-xs font-semibold">
-                                  {index + 1}
-                                </span>
-                                <span className="text-gray-800">{sucursal.sucursal}</span>
-                              </div>
-                              <span className="font-semibold text-gray-900">{sucursal.conteos}</span>
-                            </div>
+                  <div className="space-y-5">
+                    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+                      <table className="min-w-full divide-y divide-slate-200 text-sm">
+                        <thead className="bg-slate-100">
+                          <tr>
+                            <th className="px-3 py-2 text-left font-semibold text-slate-700">#</th>
+                            <th className="px-3 py-2 text-left font-semibold text-slate-700">Zona</th>
+                            <th className="px-3 py-2 text-right font-semibold text-slate-700">Conteos</th>
+                            <th className="px-3 py-2 text-right font-semibold text-slate-700">Sucursales</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-200">
+                          {conteosPorZonaRanking.map((zonaData, index) => (
+                            <tr key={`leader-${zonaData.zona}`} className={index === 0 ? 'bg-blue-50/60' : 'bg-white'}>
+                              <td className="px-3 py-2 font-bold text-slate-900">{index + 1}</td>
+                              <td className="px-3 py-2 text-slate-800">{zonaData.zona}</td>
+                              <td className="px-3 py-2 text-right font-semibold text-slate-900">{zonaData.conteos}</td>
+                              <td className="px-3 py-2 text-right text-slate-600">{zonaData.sucursales.length}</td>
+                            </tr>
                           ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {conteosPorZonaRanking.map((zonaData, zonaIndex) => {
+                      const widthPercent = (zonaData.conteos / maxConteosPorZona) * 100
+
+                      return (
+                        <div key={`${zonaData.zona}-${zonaIndex}`} className="border border-slate-200 rounded-xl overflow-hidden bg-slate-50">
+                          <div className="px-4 py-3 border-b border-slate-200 bg-gradient-to-r from-slate-100 to-white">
+                            <div className="flex items-center justify-between gap-3">
+                              <div>
+                                <p className="text-xs uppercase tracking-wide text-slate-500">Zona {zonaIndex + 1}</p>
+                                <h3 className="font-semibold text-slate-900">{zonaData.zona}</h3>
+                              </div>
+                              <span className="text-sm font-bold text-slate-800">{zonaData.conteos} conteos</span>
+                            </div>
+                            <div className="mt-3 h-2.5 w-full rounded-full bg-slate-200 overflow-hidden">
+                              <div
+                                className="h-full rounded-full bg-gradient-to-r from-blue-500 to-cyan-500"
+                                style={{ width: `${widthPercent}%` }}
+                              />
+                            </div>
+                          </div>
+
+                          <div className="divide-y divide-slate-200 bg-white">
+                            {zonaData.sucursales.map((sucursal, index) => (
+                              <div key={`${zonaData.zona}-${sucursal.idCentro}`} className="px-4 py-3">
+                                <div className="flex items-center justify-between gap-3 mb-2">
+                                  <div className="flex items-center gap-3 min-w-0">
+                                    <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 text-blue-700 text-xs font-bold">
+                                      {index + 1}
+                                    </span>
+                                    <span className="text-sm text-slate-800 truncate">{sucursal.sucursal}</span>
+                                  </div>
+                                  <span className="text-sm font-bold text-slate-900">{sucursal.conteos}</span>
+                                </div>
+                                <div className="h-1.5 w-full rounded-full bg-slate-100 overflow-hidden">
+                                  <div
+                                    className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-500"
+                                    style={{ width: `${(sucursal.conteos / Math.max(zonaData.conteos, 1)) * 100}%` }}
+                                  />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 ) : (
                   <p className="text-sm text-gray-500">No hay conteos para mostrar con el rango seleccionado.</p>
