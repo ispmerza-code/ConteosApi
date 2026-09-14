@@ -466,29 +466,29 @@ export default function Dashboard() {
             )}
           </div>
 
-          <div className="hidden md:block overflow-x-auto">
-            <table className="w-full min-w-[980px] divide-y divide-gray-200">
+          <div className="hidden md:block">
+            <table className="w-full table-fixed divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 min-w-[90px] whitespace-nowrap text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 py-3 w-[8%] text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     ID
                   </th>
-                  <th className="px-6 py-3 min-w-[220px] whitespace-nowrap text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 py-3 w-[20%] text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Centro
                   </th>
-                  <th className="px-6 py-3 min-w-[180px] whitespace-nowrap text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 py-3 w-[18%] text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     APP (Capturó)
                   </th>
-                  <th className="px-6 py-3 min-w-[200px] whitespace-nowrap text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 py-3 w-[18%] text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Usuario Asignado
                   </th>
-                  <th className="px-6 py-3 min-w-[160px] whitespace-nowrap text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 py-3 w-[16%] text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Fecha y Hora
                   </th>
-                  <th className="px-6 py-3 min-w-[140px] whitespace-nowrap text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 py-3 w-[12%] text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Estado
                   </th>
-                  <th className="px-6 py-3 min-w-[120px] whitespace-nowrap text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 py-3 w-[8%] text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Productos
                   </th>
                 </tr>
@@ -496,41 +496,41 @@ export default function Dashboard() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {conteosParaMostrar.map((conteo: any) => (
                   <tr key={conteo.idConteo} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    <td className="px-3 py-4 text-sm font-medium text-gray-900 truncate">
                       #{conteo.idConteo}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-3 py-4 text-sm text-gray-900 truncate">
                       {formatSucursal(conteo.IdCentro)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <td className="px-3 py-4 text-sm">
                       {(() => {
                         const app = getAppPerformer(conteo)
                         return app
-                          ? <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 text-xs font-medium"><FiSmartphone className="w-3 h-3" />{app}</span>
+                          ? <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 text-xs font-medium max-w-full truncate"><FiSmartphone className="w-3 h-3 shrink-0" /><span className="truncate">{app}</span></span>
                           : <span className="text-gray-400">—</span>
                       })()}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-3 py-4 text-sm text-gray-900 truncate">
                       {formatUsuario(conteo.IdUsuario)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-3 py-4 text-sm text-gray-900">
                       <div className="flex flex-col gap-0.5">
                         <div className="flex items-center">
-                          <FiCalendar className="w-4 h-4 mr-2 text-gray-400" />
+                          <FiCalendar className="w-4 h-4 mr-2 text-gray-400 shrink-0" />
                           {formatShortDate(conteo.Fechal)}
                         </div>
                         {conteo.FechaHora && (
                           <div className="flex items-center text-xs text-gray-500">
-                            <FiClock className="w-3 h-3 mr-2 text-gray-400" />
+                            <FiClock className="w-3 h-3 mr-2 text-gray-400 shrink-0" />
                             {formatTime(conteo.FechaHora)}
                           </div>
                         )}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-3 py-4">
                       {getStatusBadge(conteo.Envio)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-3 py-4 text-sm text-gray-900">
                       {conteo.total_productos || 0}
                     </td>
                   </tr>

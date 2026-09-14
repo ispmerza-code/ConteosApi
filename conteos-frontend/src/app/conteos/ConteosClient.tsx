@@ -445,29 +445,29 @@ export function ConteosClient() {
             ))}
           </div>
 
-          <div className="hidden md:block overflow-x-auto">
-            <table className="w-full min-w-[1040px] divide-y divide-gray-200">
+          <div className="hidden md:block">
+            <table className="w-full table-fixed divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 min-w-[90px] whitespace-nowrap text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 py-3 w-[8%] text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     ID
                   </th>
-                  <th className="px-6 py-3 min-w-[220px] whitespace-nowrap text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 py-3 w-[22%] text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Centro
                   </th>
-                  <th className="px-6 py-3 min-w-[240px] whitespace-nowrap text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 py-3 w-[22%] text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Realizó
                   </th>
-                  <th className="px-6 py-3 min-w-[140px] whitespace-nowrap text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 py-3 w-[14%] text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Fecha
                   </th>
-                  <th className="px-6 py-3 min-w-[140px] whitespace-nowrap text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 py-3 w-[12%] text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Estado
                   </th>
-                  <th className="px-6 py-3 min-w-[120px] whitespace-nowrap text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 py-3 w-[9%] text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Productos
                   </th>
-                  <th className="px-6 py-3 min-w-[120px] whitespace-nowrap text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 py-3 w-[13%] text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Acciones
                   </th>
                 </tr>
@@ -475,34 +475,34 @@ export function ConteosClient() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {currentConteos.map((conteo: ConteoListResponse) => (
                   <tr key={conteo.idConteo} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    <td className="px-3 py-4 text-sm font-medium text-gray-900 truncate">
                       #{conteo.idConteo}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      <div className="flex items-center">
-                        <FiPackage className="w-4 h-4 mr-2 text-gray-400" />
-                        {formatSucursal(conteo.IdCentro)}
+                    <td className="px-3 py-4 text-sm text-gray-900">
+                      <div className="flex items-center min-w-0">
+                        <FiPackage className="w-4 h-4 mr-2 text-gray-400 shrink-0" />
+                        <span className="truncate">{formatSucursal(conteo.IdCentro)}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      <div className="flex items-center">
-                        <FiUser className="w-4 h-4 mr-2 text-gray-400" />
-                        {formatUsuario(conteo.IdUsuario)}
+                    <td className="px-3 py-4 text-sm text-gray-900">
+                      <div className="flex items-center min-w-0">
+                        <FiUser className="w-4 h-4 mr-2 text-gray-400 shrink-0" />
+                        <span className="truncate">{formatUsuario(conteo.IdUsuario)}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      <div className="flex items-center">
-                        <FiCalendar className="w-4 h-4 mr-2 text-gray-400" />
-                        {formatShortDate(conteo.Fechal)}
+                    <td className="px-3 py-4 text-sm text-gray-900">
+                      <div className="flex items-center min-w-0">
+                        <FiCalendar className="w-4 h-4 mr-2 text-gray-400 shrink-0" />
+                        <span className="truncate">{formatShortDate(conteo.Fechal)}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-3 py-4">
                       {getStatusBadge(conteo.Envio, conteo.Estatus)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-3 py-4 text-sm text-gray-900">
                       {conteo.total_productos ?? 0}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <td className="px-3 py-4 text-sm font-medium">
                       <div className="flex space-x-2">
                         <button
                           onClick={() => router.push(`/conteos/ver/${conteo.idConteo}`)}
